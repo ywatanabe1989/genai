@@ -1,39 +1,59 @@
-;;; genai.el --- LLM client for Emacs -*- lexical-binding: t; -*-
+;;; genai.el --- Client for interactive with LLMs -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2024 Yusuke Watanabe
 
 ;; Author: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
+;; Maintainer: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
+;; Created: 7 Jul 2024
+;; URL: https://github.com/ywatanabe1989/genai
 ;; Version: 1.0
-;; Keywords: LLM, Generative AI
-;; URL: https://github.com/ywatanabe/genai
-;; License: MIT
-;; SPDX-License-Identifier: MIT
-;; Package-Requires: ((emacs "24.4"))
+;; License: GNU General Public License (GPL) version 3
+;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6"))
+
+;; Keywords: tools, LLM, template
+
 
 ;;; Commentary:
 
-;; This package provides an interface to run and interact with large language
-;; models (LLMs) such as ChatGPT directly from Emacs.  It offers functions to
-;; send prompts, display responses, and manage conversation history.
+;; `genai.el` provides an interface to interact with large language models (LLMs) such as ChatGPT, Gemini, Claude, Llama.
 
-;; Key features:
-;; - Run LLM queries on selected regions or input prompts
-;; - Display and navigate LLM responses in a streaming manner
-;; - Utilize markdown mode for visual aid
-;; - Easy navigation between code blcks provided by LLM
-;; - Automatically copy code blocks provided by LLM
-;; - Manage conversation history as a human-readable file, independent of chat history used by LLM
+;; Features:
+;; - LLM queries are constructed from the region or manual typing
+;; - Templates for prompts are customizable
+;; - LLM outputs are displayed in a streaming manner
+;; - Markup is enabled using markdown mode
+;; - Code blocks provided by LLM can be navigated with automatic copy to the kill ring
+;; - Conversation history as both human- and AI-readable files is stored, independently from chat history applied to LLMs
 
 ;; Usage:
 ;; - M-x genai-on-region : Run GenAI on selected text or prompt for input
 ;; - M-x genai-show-history : Display conversation history
+;; - M-n (on "GenAI" buffer): Navigate to the "next" code block and copy the content to the kill ring
+;; - M-p (on "GenAI" buffer): Navigate to the "previous" code block and copy the content to the kill ring
 
-;;; Keybindings:
-;; - M-n: Navigate to the next code block and copy the content to the kill ring
-;; - M-p: Navigate to the previous code block and copy the content to the kill ring
+;;; Sample configuration:
+;; (require 'genai)
 
+;; ;; Model (OpenAI, Gemini, Claude, Perplexity, or Llama models)
+;; (setq genai-api-key (getenv "GENAI_API_KEY")) ; "sk-OS****brr7" = OPENAI_API_KEY
+;; (setq genai-engine (getenv "GENAI_ENGINE")) ; "gpt-4o"
 
-;; See the README.md file for more detailed instructions and customization options.
+;; ;; Model Parameters
+;; (setq genai-n-history "5")
+;; (setq genai-max-tokens "2000")
+;; (setq genai-temperature "0")
+
+;; ;; PATH
+;; (setq genai-home-dir (getenv "EMACS_GENAI_DIR")) ; "/home/ywatanabe/.emacs.d/lisp/genai/"
+;; (setq genai-python-bin-path (concat (getenv "HOME") "/proj/env-3.11/bin/python3")) ; default /usr/bin/python3
+;; (setq genai-python-script-path (concat (getenv "EMACS_GENAI_DIR") "genai.py"))
+;; (setq genai-human-history-path (concat (getenv "EMACS_GENAI_DIR") "history-human-secret.json"))
+
+;; ;; Key Bindings
+;; (define-key global-map (kbd "C-M-g") 'genai-on-region)
+
+;;; Templates
+;; Templates can be managed under the './templates' directory (default: $HOME/.emacs.d/lisp/emacs-genai/templates/*.md). Uppercase letters in the template file name are used as shortcut keys for selection. Your input to GenAI (selected region) is inserted into the "PLACEHOLDER" of the template.
 
 ;;; Code:
 (require 'markdown-mode)
@@ -55,8 +75,7 @@
   (use-local-map genai-mode-map)
   ;; Inherit from markdown-mode
   (set (make-local-variable 'font-lock-defaults)
-       (get 'markdown-mode 'font-lock-defaults))
-  )
+       (get 'markdown-mode 'font-lock-defaults)))
 
 ;; Add the mode to auto-mode-alist for files with certain extensions to open in genai-mode
 (add-to-list 'auto-mode-alist '("\\.genai\\'" . genai-mode))
@@ -68,33 +87,41 @@
 
 (defvar genai--process nil "Process object for the GenAI process.")
 
-(define-derived-mode genai-mode markdown-mode "GenAI"
-  "Major mode for GenAI interactions.")
+;; (define-derived-mode genai-mode markdown-mode "GenAI"
+;;   "Major mode for GenAI interactions.")
 
 (defcustom genai-home-dir
   (file-name-directory (or load-file-name buffer-file-name))
-  "The home directory of genai.el.")
+  "The home directory of genai.el."
+  :type 'string)
 
 (defcustom genai-python-bin-path "/usr/bin/python3"
-  "Path to the Python binary used by genai.el.")
+  "Path to the Python binary used by genai.el."
+  :type 'string)
 
 (defcustom genai-python-script-path (concat genai-home-dir "genai.py")
-  "Path to the Python script used by genai.el.")
+  "Path to the Python script used by genai.el."
+  :type 'string)
 
 (defcustom genai-python-script-path-show-history (concat genai-home-dir "show-history.py")
-  "Path to the Python script used by genai.el.")
+  "Path to the Python script used by genai.el."
+  :type 'string)
 
 (defcustom genai-templates-dir (concat genai-home-dir "templates/")
-  "The path to the Python script used by genai.el.")
+  "The path to the Python script used by genai.el."
+  :type 'string)
 
 (defcustom genai-history-human-path (concat genai-home-dir "history-human-secret.json")
-  "Path to the history file used by genai.el.")
+  "Path to the history file used by genai.el."
+  :type 'string)
 
 (defcustom genai-history-ai-path (replace-regexp-in-string "human" "ai" genai-history-human-path)
-  "Path to the history file used by genai.el.")
+  "Path to the history file used by genai.el."
+  :type 'string)
 
 (defcustom genai-api-key (getenv "GENAI_API_KEY")
-  "The API key to use.")
+  "The API key to use."
+  :type 'string)
 
 (defcustom genai-engine (getenv "GENAI_ENGINE")
   "The LLM engine to use for generating responses.
@@ -103,13 +130,16 @@ This should be a string identifying the specific model or engine version."
   :group 'genai)
 
 (defcustom genai-max-tokens "2000"
-  "Maximum number of tokens used with the engine.")
+  "Maximum number of tokens used with the engine."
+  :type 'string)
 
 (defcustom genai-n-history "5"
-  "Number of history entries to keep.")
+  "Number of history entries to keep."
+  :type 'string)
 
 (defcustom genai-temperature "0"
-  "Temperature setting used with the engine.")
+  "Temperature setting used with the engine."
+  :type 'string)
 
 (defvar genai--progress-reporter nil "Progress reporter for GenAI process.")
 
@@ -125,7 +155,7 @@ This should be a string identifying the specific model or engine version."
     (setq genai-dependencies-checked t)))
 
 (cl-defun genai--check-python-dependencies ()
-  "Check if the required Python 'mngs' package is installed."
+  "Check if python mngs package is installed."
   (interactive)
   (let* ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
                                 genai-python-bin-path))
@@ -170,7 +200,7 @@ BUFFER can be a buffer object or a buffer name."
       (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
 
 (cl-defun genai--create-shortcuts (templates)
-  "Generate shortcuts for a list of sorted TEMPLATES. Ensures the first occurrence has no suffix and duplicates are suffixed incrementally."
+  "Generate shortcuts for templates."
   (let ((shortcuts (make-hash-table :test 'equal))
         (counts (make-hash-table :test 'equal)))
     ;; Sort templates first by their display name to ensure alphabetical precedence
@@ -190,8 +220,10 @@ BUFFER can be a buffer object or a buffer name."
 
 (cl-defun genai--select-template ()
   "Prompt the user to select a template type for the GenAI model.
-If INITIAL-INPUT is non-nil, it returns it without prompting. Otherwise, it prompts the user with available templates.
-Returns the selected template type or 'custom' if the input is non-standard or empty."
+If INITIAL-INPUT is non-nil, it returns it without prompting.
+Otherwise, it prompts the user with available templates.
+Returns the selected template type or None
+if the input is non-standard or empty."
   (interactive)
   (unless (minibufferp)
     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
@@ -238,12 +270,10 @@ Returns the selected template type or 'custom' if the input is non-standard or e
     (insert "\n\n")
     (goto-char (point-max))
     ;; (sleep-for 0.1)
-    (run-at-time "0 sec" nil #'genai--scroll)
-    )
-  )
+    (run-at-time "0 sec" nil #'genai--scroll)))
 
 (cl-defun genai--construct-python-command (prompt)
-  "Construct the complete command string for starting the GenAI Python process, using a specified prompt and prompting for the template type."
+  "Construct complete command string for starting the GenAI Python process."
   (interactive "sEnter prompt: ")
 
   (let* ((template-type (genai--select-template))
@@ -315,12 +345,10 @@ Handles different process states and calls cleanup when appropriate."
    ((string-match-p "finished\\|exited" msg)
     (progress-reporter-done genai--progress-reporter)
     (message "GenAI process finished.")
-    (genai--clean-up-all)
-    )
+    (genai--clean-up-all))
    ((string-match-p "error" msg)
     (progress-reporter-done genai--progress-reporter)
-    (message "GenAI process encountered an error: %s" msg)
-    )
+    (message "GenAI process encountered an error: %s" msg))
    (t
     (message "GenAI process: %s" msg))))
 
@@ -330,8 +358,7 @@ Handles different process states and calls cleanup when appropriate."
   ;; (genai--scroll)
   (genai--clean-up-output)
   ;; (genai-copy-code-blocks)
-  (genai--insert-splitter-after-run)
-  )
+  (genai--insert-splitter-after-run))
 
 
 (cl-defun genai--update-progress ()
@@ -376,7 +403,7 @@ Handles different process states and calls cleanup when appropriate."
 (cl-defun genai--clean-up-output ()
   "Remove ANSI escape codes and specific unwanted messages from the *GenAI* buffer."
   (interactive)
-  (with-current-buffer (get-buffer buffer)
+  (with-current-buffer (get-buffer-create "*GenAI*")
     (ansi-color-apply-on-region (point-min) (point-max))
     (save-excursion
       (goto-char (point-min))
@@ -384,18 +411,18 @@ Handles different process states and calls cleanup when appropriate."
         (replace-match "")))))
 
 (cl-defun genai--run (prompt)
+  "Run GenAI command with prompt."
   (interactive)
-  "Run GenAI command with BUFFER text as input and append output stream to output-buffer."
   (if (equal prompt "g")
       (progn
         (switch-to-buffer-other-window "*GenAI*")
         (keyboard-quit)
-        (message "Jump to the \"*GenAI*\" buffer")
-        )  ; Exit the function immediately
+        (message "Jump to the \"*GenAI*\" buffer"))
 
   (with-current-buffer (get-buffer-create "*GenAI*")
     (goto-char (point-max))
-    (font-lock-fontify-buffer)
+    ;; (font-lock-fontify-buffer)
+    (font-lock-ensure)
     (message "GenAI: Running...")
     (genai--start-python-process prompt))))
 
@@ -415,8 +442,7 @@ The response will be displayed in the *GenAI* buffer."
     ;; Prepare the buffer for output
     (with-current-buffer buffer
       (unless (eq major-mode 'genai-mode)
-        (genai-mode))
-      )
+        (genai-mode)))
 
     ;; Run the Gen AI
     (genai--run region-text)
@@ -427,7 +453,7 @@ The response will be displayed in the *GenAI* buffer."
 (cl-defun genai--scroll ()
   "Scrolls to the first genai--splitter from the end of the *GenAI* buffer."
   (interactive)
-  (let ((found-position nil))
+  ;; (let ((point nil))
     (if-let ((genai-buffer (get-buffer "*GenAI*")))
         (with-current-buffer genai-buffer
           (goto-char (point-max))
@@ -438,18 +464,18 @@ The response will be displayed in the *GenAI* buffer."
             (when-let ((window (get-buffer-window genai-buffer 0)))
               (set-window-point window point)
               (with-selected-window window
-                (recenter 0))))))))
+                (recenter 0)))))));)
 
 (cl-defun genai--insert-splitter-after-run ()
   "Insert splitter after retrieving the Gen AI output"
   (interactive)
-  (let ((found-position nil))
+  ;; (let ((point nil))
     (if-let ((genai-buffer (get-buffer "*GenAI*")))
         (with-current-buffer genai-buffer
           (goto-char (point-max))
           (insert genai--splitter)
-          (insert "\n\n")
-          ))))
+          (insert "\n\n"))));)
+
 
 ;;;###autoload
 (defun genai-copy-last ()
@@ -460,8 +486,7 @@ The response will be displayed in the *GenAI* buffer."
         (goto-char (point-max))
         (set-mark (point))
         (goto-char (point-min))
-        (kill-ring-save (region-beginning) (region-end))
-        )))
+        (kill-ring-save (region-beginning) (region-end)))))
 
 ;;;###autoload
 (defun genai-copy-code-blocks ()
@@ -470,21 +495,21 @@ The response will be displayed in the *GenAI* buffer."
   (with-current-buffer (get-buffer "*GenAI*")
     (goto-char (point-max))
   (let ((code-block-start-delimiter "^```\\s-*\\([a-zA-Z0-9_+-]*\\)?\\s-*$")
-          (code-block-delimiter-end "^```$")
+          (code-block-end-delimiter "^```$")
+          (count nil)
           blocks start end)
       (when (search-backward genai--splitter nil t)
         (goto-char (match-end 0))
-        (while (re-search-forward code-block-delimiter-start nil t)
+        (while (re-search-forward code-block-start-delimiter nil t)
           (forward-line 1)
           (setq start (point))
-          (if (re-search-forward code-block-delimiter-end nil t)
+          (if (re-search-forward code-block-end-delimiter nil t)
               (progn
                 (setq end (match-beginning 0))
                 (push (buffer-substring-no-properties start end) blocks))))
         ;; Remove nreverse to keep the original order of discovery
         (dolist (block blocks)
-          (kill-new block)
-          )
+          (kill-new block))
         (setq count (length blocks))
         (message "Code blocks copied (n = %d)" count)))))
 
@@ -534,8 +559,7 @@ The response will be displayed in the *GenAI* buffer."
                 (activate-mark)
                 (kill-ring-save (point) end)
                 (message "Copied.")
-                (my/flash-mode-line "darkgreen" 1)
-                )
+                (my/flash-mode-line "darkgreen" 1))
             (deactivate-mark)))))))
 
 
@@ -555,3 +579,5 @@ The response will be displayed in the *GenAI* buffer."
 (add-hook 'emacs-startup-hook 'genai--init)
 
 (provide 'genai)
+
+;;; genai.el ends here
