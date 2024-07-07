@@ -464,7 +464,7 @@ The response will be displayed in the *GenAI* buffer."
             (when-let ((window (get-buffer-window genai-buffer 0)))
               (set-window-point window point)
               (with-selected-window window
-                (recenter 0)))))));)
+                (recenter 0)))))))
 
 (cl-defun genai--insert-splitter-after-run ()
   "Insert splitter after retrieving the Gen AI output"
@@ -474,7 +474,7 @@ The response will be displayed in the *GenAI* buffer."
         (with-current-buffer genai-buffer
           (goto-char (point-max))
           (insert genai--splitter)
-          (insert "\n\n"))));)
+          (insert "\n\n"))))
 
 
 ;;;###autoload
