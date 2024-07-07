@@ -68,14 +68,14 @@
     map)
   "Keymap for `genai-mode'.")
 
-(define-derived-mode genai-mode markdown-mode "GenAI"
-  "Major mode for GenAI process management and interaction.
-\\{genai-mode-map}"
-  :syntax-table markdown-mode-syntax-table
-  (use-local-map genai-mode-map)
-  ;; Inherit from markdown-mode
-  (set (make-local-variable 'font-lock-defaults)
-       (get 'markdown-mode 'font-lock-defaults)))
+;; (define-derived-mode genai-mode markdown-mode "GenAI"
+;;   "Major mode for GenAI process management and interaction.
+;; \\{genai-mode-map}"
+;;   :syntax-table markdown-mode-syntax-table
+;;   (use-local-map genai-mode-map)
+;;   ;; Inherit from markdown-mode
+;;   (set (make-local-variable 'font-lock-defaults)
+;;        (get 'markdown-mode 'font-lock-defaults)))
 
 ;; Add the mode to auto-mode-alist for files with certain extensions to open in genai-mode
 (add-to-list 'auto-mode-alist '("\\.genai\\'" . genai-mode))
@@ -87,8 +87,8 @@
 
 (defvar genai--process nil "Process object for the GenAI process.")
 
-;; (define-derived-mode genai-mode markdown-mode "GenAI"
-;;   "Major mode for GenAI interactions.")
+(define-derived-mode genai-mode markdown-mode "GenAI"
+  "Major mode for GenAI interactions.")
 
 (defcustom genai-home-dir
   (file-name-directory (or load-file-name buffer-file-name))
@@ -338,7 +338,7 @@ if the input is non-standard or empty."
       (message "History reset successfully")))
 
 
-(defun genai--process-sentinel (process msg)
+(defun genai--process-sentinel (_process msg)
   "Custom sentinel for the GenAI process.
 Handles different process states and calls cleanup when appropriate."
   (cond
@@ -351,6 +351,20 @@ Handles different process states and calls cleanup when appropriate."
     (message "GenAI process encountered an error: %s" msg))
    (t
     (message "GenAI process: %s" msg))))
+
+;; (defun genai--process-sentinel (process msg)
+;;   "Custom sentinel for the GenAI process.
+;; Handles different process states and calls cleanup when appropriate."
+;;   (cond
+;;    ((string-match-p "finished\\|exited" msg)
+;;     (progress-reporter-done genai--progress-reporter)
+;;     (message "GenAI process finished.")
+;;     (genai--clean-up-all))
+;;    ((string-match-p "error" msg)
+;;     (progress-reporter-done genai--progress-reporter)
+;;     (message "GenAI process encountered an error: %s" msg))
+;;    (t
+;;     (message "GenAI process: %s" msg))))
 
 
 (cl-defun genai--clean-up-all ()
@@ -453,23 +467,21 @@ The response will be displayed in the *GenAI* buffer."
 (cl-defun genai--scroll ()
   "Scrolls to the first genai--splitter from the end of the *GenAI* buffer."
   (interactive)
-  ;; (let ((point nil))
-    (if-let ((genai-buffer (get-buffer "*GenAI*")))
-        (with-current-buffer genai-buffer
-          (goto-char (point-max))
-          ;; Search for the splitter and update found position
-          (when (re-search-backward genai--splitter nil t)
-            (beginning-of-line))
-          (let ((point (point)))
-            (when-let ((window (get-buffer-window genai-buffer 0)))
-              (set-window-point window point)
-              (with-selected-window window
-                (recenter 0)))))))
+  (if-let ((genai-buffer (get-buffer "*GenAI*")))
+      (with-current-buffer genai-buffer
+        (goto-char (point-max))
+        ;; Search for the splitter and update found position
+        (when (re-search-backward genai--splitter nil t)
+          (beginning-of-line))
+        (let ((pos (point)))
+          (when-let ((window (get-buffer-window genai-buffer 0)))
+            (set-window-point window pos)
+            (with-selected-window window
+              (recenter 0)))))))
 
 (cl-defun genai--insert-splitter-after-run ()
   "Insert splitter after retrieving the Gen AI output"
   (interactive)
-  ;; (let ((point nil))
     (if-let ((genai-buffer (get-buffer "*GenAI*")))
         (with-current-buffer genai-buffer
           (goto-char (point-max))
