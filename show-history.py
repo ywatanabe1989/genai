@@ -1,6 +1,6 @@
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-06-15 16:19:20 (ywatanabe)"
+# Time-stamp: "2024-07-08 23:58:02 (ywatanabe)"
 # /home/ywatanabe/.dotfiles/.emacs.d/lisp/emacs-genai/organize-and-show-history.py
 
 
@@ -53,7 +53,7 @@ Config
 Functions & Classes
 """
 # PATHs
-__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/emacs-genai/emacs-genai.py"
+# __file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/emacs-genai/emacs-genai.py"
 
 
 def print_splitter(role=None):

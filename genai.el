@@ -402,7 +402,7 @@ Handles different process states and calls cleanup when appropriate."
     (setq genai--progress-reporter (make-progress-reporter "GenAI Processing..." 0 100))
     (genai--update-progress)
 
-    (genai--scroll)
+    ;; (genai--scroll)
 
     process))
 
@@ -547,7 +547,7 @@ The response will be displayed in the *GenAI* buffer."
                 (activate-mark)
                 (kill-ring-save start (point))
                 (message "Copied.")
-                (my/flash-mode-line "darkgreen" 1)
+                (genai--flash-mode-line "darkgreen" 1)
             (deactivate-mark))))))))
 
 ;;;###autoload
@@ -571,8 +571,24 @@ The response will be displayed in the *GenAI* buffer."
                 (activate-mark)
                 (kill-ring-save (point) end)
                 (message "Copied.")
-                (my/flash-mode-line "darkgreen" 1))
+                (genai--flash-mode-line "darkgreen" 1))
             (deactivate-mark)))))))
+
+(defun genai--flash-mode-line (color-str &optional n-flash)
+  (interactive)
+  "Flash the mode line's background color.
+COLOR-STR is the color to flash.
+Optional N-FLASH specifies flash count (default 1)."
+  (let ((original-color (face-background 'mode-line))
+        (flash-color color-str)
+        (count (or n-flash 1)))
+    (dotimes (i count)
+      (set-face-background 'mode-line flash-color)
+      (redisplay)
+      (sleep-for 0.05)
+      (set-face-background 'mode-line original-color)
+      (redisplay)
+      (sleep-for 0.05))))
 
 
 (add-hook 'comint-output-filter-functions 'genai--clean-up-output)
