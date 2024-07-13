@@ -182,8 +182,9 @@
 ;; Functions
 (defun genai--init ()
   "Initialize the GenAI package and check Python dependencies."
-  (genai--check-python-dependencies)
-  )
+  (unless genai-dependencies-checked
+    (genai--check-python-dependencies)
+    (setq genai-dependencies-checked t)))
 
 (cl-defun genai--ensure-dependencies ()
   "Ensure Python dependencies are checked
@@ -470,6 +471,7 @@ If a region is selected, use that text as the prompt.
 Otherwise, prompt the user to enter a prompt.
 The response will be displayed in the *GenAI* buffer."
   (interactive)
+  (genai--init)  ; Ensure initialization at first use.
   (genai--ensure-dependencies)
   (let* ((region-text (if (use-region-p)
                           (buffer-substring-no-properties (region-beginning) (region-end))
@@ -610,9 +612,6 @@ The response will be displayed in the *GenAI* buffer."
 ;; Keybindings
 (define-key genai-mode-map (kbd "M-n") 'genai-next-code-block)
 (define-key genai-mode-map (kbd "M-p") 'genai-previous-code-block)
-
-;; Call the init function upon loading the package.
-(add-hook 'emacs-startup-hook 'genai--init)
 
 (provide 'genai)
 
