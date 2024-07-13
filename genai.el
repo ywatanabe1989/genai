@@ -58,13 +58,14 @@
 ;;; Code:
 (require 'markdown-mode)
 (require 'cl-lib)
+(require 'async)
 
 (defvar genai-dependencies-checked nil
   "Whether Python dependencies have been checked.")
 
 (defvar genai-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-g") 'genai--stop-python-process)
+    ;; (define-key map (kbd "C-g") 'genai--stop-python-process)
     map)
   "Keymap for `genai-mode'.")
 
@@ -147,6 +148,18 @@ This should be a string identifying the specific model or engine version."
   "--------------------------------------------------------------------------------"
   "Buffer for running GenAI outputs.")
 
+(defconst genai--splitter-human-readable
+  "============================================================"
+  "Buffer for running GenAI outputs.")
+
+(defconst genai--code-block-start-delimiter
+  "^\\s-*```\\s-*\\([a-zA-Z0-9_+-]+\\)$"
+  "Regex for code block start delimiter.")
+
+(defconst genai--code-block-end-delimiter
+  "^\\s-*```\\s-*$"
+  "Regex for code block end delimiter.")
+
 ;; Functions
 (cl-defun genai--ensure-dependencies ()
   "Ensure Python dependencies are checked before running any GenAI functionality."
@@ -157,14 +170,29 @@ This should be a string identifying the specific model or engine version."
 (cl-defun genai--check-python-dependencies ()
   "Check if python mngs package is installed."
   (interactive)
-  (let* ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
-                                genai-python-bin-path))
-         (result (shell-command-to-string check-command)))
-    (if (string-match "DistributionNotFound\\|VersionConflict" result)
-        (if (yes-or-no-p (format "The required Python package 'mngs>=1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
-            (shell-command-to-string (format "%s -m pip install mngs>=1.5.5" genai-python-bin-path))
-          (error "The Python package 'mngs>=1.5.5' is required for genai.el to function properly."))
-      (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path)))))
+  (let ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
+                               genai-python-bin-path)))
+    (async-start
+     `(lambda () (shell-command-to-string ,check-command))
+     (lambda (result)
+       (if (string-match "DistributionNotFound\\|VersionConflict" result)
+           (when (yes-or-no-p (format "The required Python package 'mngs>=1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
+             (async-start
+              `(lambda () (shell-command-to-string ,(format "%s -m pip install mngs>=1.5.5" genai-python-bin-path)))
+              (lambda (_) (message "Package installed/upgraded."))))
+         (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path)))))))
+
+;; (cl-defun genai--check-python-dependencies ()
+;;   "Check if python mngs package is installed."
+;;   (interactive)
+;;   (let* ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
+;;                                 genai-python-bin-path))
+;;          (result (shell-command-to-string check-command)))
+;;     (if (string-match "DistributionNotFound\\|VersionConflict" result)
+;;         (if (yes-or-no-p (format "The required Python package 'mngs>=1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
+;;             (shell-command-to-string (format "%s -m pip install mngs>=1.5.5" genai-python-bin-path))
+;;           (error "The Python package 'mngs>=1.5.5' is required for genai.el to function properly."))
+;;       (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path)))))
 
 (cl-defun genai--create-buffer-file (buffer)
   "Create a temporary file with the text in BUFFER and return its file name.
@@ -303,28 +331,77 @@ if the input is non-standard or empty."
     (genai--insert-prompt-template-type-and-engine prompt template-type)
     command))
 
+;; ;; working but slow
+;; ;;;###autoload
+;; (defun genai-show-history ()
+;;   "Show the GenAI history in a temporary buffer."
+;;   (interactive)
+;;   (let ((buffer (get-buffer-create "*GenAI All History*")))
+;;     (with-current-buffer buffer
+;;       (erase-buffer)
+;;       (let* ((command (format "%s %s --human_history_path %s"
+;;                               (shell-quote-argument genai-python-bin-path)
+;;                               (shell-quote-argument genai-python-script-path-show-history)
+;;                               (shell-quote-argument genai-history-human-path)))
+;;              ;; Run the command and get its output as a string
+;;              (output (shell-command-to-string command)))
+;;         ;; Insert the output into the buffer
+;;         (insert output))
+;;       ;; Navigate to the top of the buffer
+;;       (goto-char (point-min))
+;;       ;; Enable Markdown mode
+;;       (markdown-mode)
+;;     ;; Display the buffer in a window
+;;     (display-buffer buffer))))
+
+;; ;; working but slow
+;; ;;;###autoload
+;; (defun genai-show-history ()
+;;   "Show the GenAI history in a temporary buffer."
+;;   (interactive)
+;;   (let* ((buffer (get-buffer-create "*GenAI All History*"))
+;;          (temp-file (make-temp-file "genai-history-" nil ".md")))
+;;     (with-current-buffer buffer
+;;       (erase-buffer)
+;;       (let* ((command (format "%s %s --human_history_path %s --output %s"
+;;                               (shell-quote-argument genai-python-bin-path)
+;;                               (shell-quote-argument genai-python-script-path-show-history)
+;;                               (shell-quote-argument genai-history-human-path)
+;;                               (shell-quote-argument temp-file)))
+;;              (output (shell-command-to-string command)))
+;;         (insert-file-contents temp-file)
+;;         (delete-file temp-file))
+;;       ;; (goto-char (point-max))
+;;       (genai--scroll-history)
+;;       (markdown-mode))
+;;     (display-buffer buffer)))
+
 ;;;###autoload
 (defun genai-show-history ()
   "Show the GenAI history in a temporary buffer."
   (interactive)
-  (let ((buffer (get-buffer-create "*GenAI All History*")))
+  (let ((buffer (get-buffer-create "*GenAI All History*"))
+        (temp-file (make-temp-file "genai-history-" nil ".md")))
     (with-current-buffer buffer
-      (erase-buffer)
-      (let* ((command (format "%s %s --human_history_path %s"
-                              (shell-quote-argument genai-python-bin-path)
-                              (shell-quote-argument genai-python-script-path-show-history)
-                              (shell-quote-argument genai-history-human-path)))
-             ;; Run the command and get its output as a string
-             (output (shell-command-to-string command)))
-        ;; Insert the output into the buffer
-        (insert output))
-      ;; Navigate to the top of the buffer
-      (goto-char (point-min))
-      ;; Enable Markdown mode
-      (markdown-mode)
-    ;; Display the buffer in a window
-    (display-buffer buffer))))
-
+      (erase-buffer))
+    (let ((command-list (list genai-python-bin-path
+                              genai-python-script-path-show-history
+                              "--human_history_path" genai-history-human-path
+                              "--output" temp-file)))
+      (make-process
+       :name "genai-show-history"
+       :buffer buffer
+       :command command-list
+       :sentinel (lambda (process event)
+                   (when (string= event "finished\n")
+                     (with-current-buffer (process-buffer process)
+                       (insert-file-contents temp-file)
+                       (delete-file temp-file)
+                       (goto-char (point-min))
+                       (genai--scroll-history)
+                       (markdown-mode)
+                       (display-buffer (current-buffer)))))))
+    (message "Loading history...")))
 
 ;;;###autoload
 (defun genai-reset-history ()
@@ -369,11 +446,8 @@ Handles different process states and calls cleanup when appropriate."
 
 (cl-defun genai--clean-up-all ()
   (interactive)
-  ;; (genai--scroll)
-  (genai--clean-up-output)
-  ;; (genai-copy-code-blocks)
-  (genai--insert-splitter-after-run))
-
+  (genai--clean-up-output))
+  ;; (genai--insert-splitter-after-run))
 
 (cl-defun genai--update-progress ()
   "Update the progress reporter."
@@ -382,6 +456,7 @@ Handles different process states and calls cleanup when appropriate."
     (when (process-live-p genai--process)
       (run-with-timer 0.5 nil #'genai--update-progress))))
 
+;; working, probably due to correct command parsing
 (cl-defun genai--start-python-process (prompt)
   "Start the GenAI process with the given PROMPT using a shell command.
    If a process is already running, stop it before starting a new one."
@@ -479,6 +554,23 @@ The response will be displayed in the *GenAI* buffer."
             (with-selected-window window
               (recenter 0)))))))
 
+(cl-defun genai--scroll-history ()
+  "Scrolls to the first genai--splitter from the end of the *GenAI* buffer."
+  (interactive)
+  (if-let ((genai-buffer (get-buffer "*GenAI All History*")))
+      (with-current-buffer genai-buffer
+        (goto-char (point-max))
+        ;; Search for the splitter and update found position
+        (when (re-search-backward genai--splitter-human-readable nil t)
+          (beginning-of-line))
+        (let ((pos (point)))
+          (when-let ((window (get-buffer-window genai-buffer 0)))
+            (set-window-point window pos)
+            (with-selected-window window
+              (recenter 0)))))))
+
+
+
 (cl-defun genai--insert-splitter-after-run ()
   "Insert splitter after retrieving the Gen AI output"
   (interactive)
@@ -506,16 +598,14 @@ The response will be displayed in the *GenAI* buffer."
   (interactive)
   (with-current-buffer (get-buffer "*GenAI*")
     (goto-char (point-max))
-  (let ((code-block-start-delimiter "^```\\s-*\\([a-zA-Z0-9_+-]*\\)?\\s-*$")
-          (code-block-end-delimiter "^```$")
-          (count nil)
-          blocks start end)
+  (let ((count nil)
+        blocks start end)
       (when (search-backward genai--splitter nil t)
         (goto-char (match-end 0))
-        (while (re-search-forward code-block-start-delimiter nil t)
+        (while (re-search-forward genai--code-block-start-delimiter nil t)
           (forward-line 1)
           (setq start (point))
-          (if (re-search-forward code-block-end-delimiter nil t)
+          (if (re-search-forward genai--code-block-end-delimiter nil t)
               (progn
                 (setq end (match-beginning 0))
                 (push (buffer-substring-no-properties start end) blocks))))
@@ -525,71 +615,90 @@ The response will be displayed in the *GenAI* buffer."
         (setq count (length blocks))
         (message "Code blocks copied (n = %d)" count)))))
 
+
 ;;;###autoload
 (defun genai-next-code-block ()
   "Navigate to the next code block and select the content"
   (interactive)
-  (let ((code-block-start-delimiter "^\\s-*```\\s-*\\([a-zA-Z0-9_+-]*\\)?\\s-*$")
-        (code-block-end-delimiter "^```$"))
-    (with-current-buffer "*GenAI*"
-      (if (looking-at code-block-end-delimiter)
-          (forward-line 1))
+  (with-current-buffer "*GenAI*"
+    (end-of-line)
+    (when (looking-at-p genai--code-block-end-delimiter)
+      (forward-line)
+      (beginning-of-line))
+    (when (re-search-forward genai--code-block-start-delimiter nil t)
+      (let ((start (point)))
+        (when (re-search-forward genai--code-block-end-delimiter nil t)
+          (let ((end (match-beginning 0)))
+            (goto-char end)
+            (set-mark (1+ start))
+            (activate-mark)
+            (kill-ring-save start end)
+            (pulse-momentary-highlight-region (1+ start) end)
+            (message "Copied."))))
+    (deactivate-mark))))
 
-      ;; Find the next code block start delimiter
-      (when (re-search-forward code-block-start-delimiter nil t)
-        (let ((start (point)))
+;; ;;;###autoload
+;; (defun genai-next-code-block ()
+;;   "Navigate to the next code block and select the content"
+;;   (interactive)
+;;     (with-current-buffer "*GenAI*"
+;;       (if (looking-at genai--code-block-end-delimiter)
+;;           (forward-line 1))
 
-          ;; Find the next code block end delimiter
-          (if (re-search-forward code-block-end-delimiter nil t)
-              (progn
-                (goto-char (match-beginning 0))
-                (set-mark (+ start 1))
-                (activate-mark)
-                (kill-ring-save start (point))
-                (message "Copied.")
-                (genai--flash-mode-line "darkgreen" 1)
-            (deactivate-mark))))))))
+;;       ;; Find the next code block start delimiter
+;;       (when (re-search-forward genai--code-block-start-delimiter nil t)
+;;         (let ((start (point)))
+
+;;           ;; Find the next code block end delimiter
+;;           (if (re-search-forward genai--code-block-end-delimiter nil t)
+;;               (progn
+;;                 (goto-char (match-beginning 0))
+;;                 (set-mark (+ start 1))
+;;                 (activate-mark)
+;;                 (kill-ring-save start (point))
+;;                 (pulse-momentary-highlight-region (+ start 1) (point))
+;;                 (message "Copied."))
+;;             (deactivate-mark))))))
+
 
 ;;;###autoload
 (defun genai-previous-code-block ()
   "Navigate to the previous code block and select the content"
   (interactive)
-  (let ((code-block-start-delimiter "^\\s-*```\\s-*\\([a-zA-Z0-9_+-]*\\)?\\s-*$")
-        (code-block-end-delimiter "^```$"))
     (with-current-buffer "*GenAI*"
 
       ;; Find the previous code block end delimiter
-      (when (re-search-backward code-block-end-delimiter nil t)
+      (when (re-search-backward genai--code-block-end-delimiter nil t)
         (backward-char)
         (let ((end (point)))
 
           ;; Find the previous code block start delimiter
-          (if (re-search-backward code-block-start-delimiter nil t)
+          (if (re-search-backward genai--code-block-start-delimiter nil t)
               (progn
                 (forward-line 1)
                 (set-mark end)
                 (activate-mark)
                 (kill-ring-save (point) end)
-                (message "Copied.")
-                (genai--flash-mode-line "darkgreen" 1))
-            (deactivate-mark)))))))
+                (pulse-momentary-highlight-region (+ (point) 1) end)
+                (message "Copied."))
+            (deactivate-mark)
+            )))))
 
-(defun genai--flash-mode-line (color-str &optional n-flash)
-  (interactive)
-  "Flash the mode line's background color.
-COLOR-STR is the color to flash.
-Optional N-FLASH specifies flash count (default 1)."
-  (let ((original-color (face-background 'mode-line))
-        (flash-color color-str)
-        (count (or n-flash 1)))
-    (dotimes (i count)
-      (set-face-background 'mode-line flash-color)
-      (redisplay)
-      (sleep-for 0.05)
-      (set-face-background 'mode-line original-color)
-      (redisplay)
-      (sleep-for 0.05))))
-
+;; (defun genai--flash-mode-line (color-str &optional n-flash)
+;;   "Flash the mode line's background color.
+;; COLOR-STR is the color to flash.
+;; Optional N-FLASH specifies flash count (default 1)."
+;;   (interactive)
+;;   (let ((original-color (face-background 'mode-line))
+;;         (flash-color color-str)
+;;         (count (or n-flash 1)))
+;;     (dotimes (_ count)
+;;       (set-face-background 'mode-line flash-color)
+;;       (redisplay)
+;;       (sleep-for 0.05)
+;;       (set-face-background 'mode-line original-color)
+;;       (redisplay)
+;;       (sleep-for 0.05))))
 
 (add-hook 'comint-output-filter-functions 'genai--clean-up-output)
 
