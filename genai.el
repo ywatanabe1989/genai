@@ -12,48 +12,75 @@
 
 ;; Keywords: tools, LLM, template
 
-
 ;;; Commentary:
-
-;; `genai.el` provides an interface to interact with large language models (LLMs) such as ChatGPT, Gemini, Claude, Llama.
+;;
+;; `genai.el` provides an interface to interact with large language models
+;; (LLMs) such as ChatGPT, Gemini, Claude, Llama.
 
 ;; Features:
+;;
 ;; - LLM queries are constructed from the region or manual typing
+;;
 ;; - Templates for prompts are customizable
+;;
 ;; - LLM outputs are displayed in a streaming manner
+;;
 ;; - Markup is enabled using markdown mode
-;; - Code blocks provided by LLM can be navigated with automatic copy to the kill ring
-;; - Conversation history as both human- and AI-readable files is stored, independently from chat history applied to LLMs
+;;
+;; - Code blocks provided by LLM can be navigated and automatically
+;;   copied to the kill ring
+;;
+;; - Conversation history as both human- and AI-readable files is stored,
+;;   independently from chat history applied to LLMs
 
 ;; Usage:
-;; - M-x genai-on-region : Run GenAI on selected text or prompt for input
-;; - M-x genai-show-history : Display conversation history
-;; - M-n (on "GenAI" buffer): Navigate to the "next" code block and copy the content to the kill ring
-;; - M-p (on "GenAI" buffer): Navigate to the "previous" code block and copy the content to the kill ring
+;;
+;; - M-x genai-on-region:
+;;       Run GenAI on selected text. If no region is selected,
+;;       a manual prompt will be requested.
+;;
+;; - M-x genai-show-history :
+;;       Display conversation history
+;;
+;; - M-n (on "GenAI" buffer):
+;;       Navigate to the "next" code block and copy the content to the kill ring
+;;
+;; - M-p (on "GenAI" buffer):
+;;       Navigate to the "previous" code block and copy the content to the kill ring
 
 ;;; Sample configuration:
+;;
 ;; (require 'genai)
-
+;;
 ;; ;; Model (OpenAI, Gemini, Claude, Perplexity, or Llama models)
-;; (setq genai-api-key (getenv "GENAI_API_KEY")) ; "sk-OS****brr7" = OPENAI_API_KEY
+;; (setq genai-api-key (getenv "GENAI_API_KEY")) ; OPENAI_API_KEY
 ;; (setq genai-engine (getenv "GENAI_ENGINE")) ; "gpt-4o"
-
+;;
 ;; ;; Model Parameters
 ;; (setq genai-n-history "5")
 ;; (setq genai-max-tokens "2000")
 ;; (setq genai-temperature "0")
-
+;;
 ;; ;; PATH
-;; (setq genai-home-dir (getenv "EMACS_GENAI_DIR")) ; "/home/ywatanabe/.emacs.d/lisp/genai/"
-;; (setq genai-python-bin-path (concat (getenv "HOME") "/proj/env-3.11/bin/python3")) ; default /usr/bin/python3
-;; (setq genai-python-script-path (concat (getenv "EMACS_GENAI_DIR") "genai.py"))
-;; (setq genai-human-history-path (concat (getenv "EMACS_GENAI_DIR") "history-human-secret.json"))
-
+;; (setq genai-home-dir (getenv "EMACS_GENAI_DIR"))
+;; (setq genai-python-bin-path
+;;     (concat (getenv "HOME") "/proj/env-3.11/bin/python3"))
+;; (setq genai-python-script-path
+;;     (concat (getenv "EMACS_GENAI_DIR") "genai.py"))
+;; (setq genai-human-history-path
+;;     (concat (getenv "EMACS_GENAI_DIR") "history-human-secret.json"))
+;;
 ;; ;; Key Bindings
 ;; (define-key global-map (kbd "C-M-g") 'genai-on-region)
 
-;;; Templates
-;; Templates can be managed under the './templates' directory (default: $HOME/.emacs.d/lisp/emacs-genai/templates/*.md). Uppercase letters in the template file name are used as shortcut keys for selection. Your input to GenAI (selected region) is inserted into the "PLACEHOLDER" of the template.
+;;; Templates:
+;;
+;; Templates can be managed under the './templates' directory
+;; (default: $HOME/.emacs.d/lisp/emacs-genai/templates/*.md).
+;; Uppercase letters in the template file name are used as shortcut keys.
+;; The "PLACEHOLDER" keyword in a template file will be replaced
+;; with your input.
+
 
 ;;; Code:
 (require 'markdown-mode)
@@ -66,19 +93,18 @@
 
 (defvar genai-mode-map
   (let ((map (make-sparse-keymap)))
-    ;; (define-key map (kbd "C-g") 'genai--stop-python-process)
     map)
   "Keymap for `genai-mode'.")
 
-;; Add the mode to auto-mode-alist for files with certain extensions to open in genai-mode
 (add-to-list 'auto-mode-alist '("\\.genai\\'" . genai-mode))
 
 (defgroup genai nil
-  "Customization group for GenAI, an Emacs interface for large language models."
+  "Customization group for GenAI."
   :group 'applications
   :prefix "genai-")
 
-(defvar genai--process nil "Process object for the GenAI process.")
+(defvar genai--process nil
+  "Process object for the GenAI process.")
 
 (define-derived-mode genai-mode markdown-mode "GenAI"
   "Major mode for GenAI interactions.")
@@ -117,8 +143,7 @@
   :type 'string)
 
 (defcustom genai-engine (getenv "GENAI_ENGINE")
-  "The LLM engine to use for generating responses.
-This should be a string identifying the specific model or engine version."
+  "The LLM engine to use, such as ChatGPT, Claude, Gemini."
   :type 'string
   :group 'genai)
 
@@ -134,15 +159,16 @@ This should be a string identifying the specific model or engine version."
   "Temperature setting used with the engine."
   :type 'string)
 
-(defvar genai--progress-reporter nil "Progress reporter for GenAI process.")
+(defvar genai--progress-reporter nil
+  "Progress reporter for GenAI process.")
 
 (defconst genai--splitter
   "--------------------------------------------------------------------------------"
-  "Buffer for running GenAI outputs.")
+  "Splitter for GenAI outputs in buffer.")
 
 (defconst genai--splitter-human-readable
   "============================================================"
-  "Buffer for running GenAI outputs.")
+  "Splitter for human-readable history file.")
 
 (defconst genai--code-block-start-delimiter
   "^\\s-*```\\s-*\\([a-zA-Z0-9_+-]+\\)$"
@@ -153,8 +179,14 @@ This should be a string identifying the specific model or engine version."
   "Regex for code block end delimiter.")
 
 ;; Functions
+(defun genai--init ()
+  "Initialize the GenAI package and check Python dependencies."
+  (genai--check-python-dependencies)
+  )
+
 (cl-defun genai--ensure-dependencies ()
-  "Ensure Python dependencies are checked before running any GenAI functionality."
+  "Ensure Python dependencies are checked
+before running any GenAI functionality."
   (unless genai-dependencies-checked
     (genai--check-python-dependencies)
     (setq genai-dependencies-checked t)))
@@ -181,28 +213,24 @@ BUFFER can be a buffer object or a buffer name."
   (let ((file (make-temp-file "genai-prompt-" nil ".md")))
     (condition-case err
         (progn
-          ;; Insert the contents of the buffer into the temporary file
+
           (with-temp-file file
             (with-current-buffer (get-buffer buffer)
               (insert-buffer-substring buffer)))
 
-          ;; Optionally, open the file in a new buffer and enable a specific mode if needed
           (let ((temp-buffer (find-file-noselect file)))
             (with-current-buffer temp-buffer
-              ;; If you want to enable a specific mode, replace 'text-mode' with the mode you want
               (text-mode)))
-
-          ;; Return the name of the created file
           file)
+
       (error
-       ;; In case of an error, clean up and return nil
        (when file
          (delete-file file))
        (message "Error creating buffer file: %s" (error-message-string err))
        nil))))
 
 (cl-defun genai--fetch-templates (dir)
-  "Return list of templates file names that start with capital letters in `dir`."
+  "Return list of templates file names that start with capital letters."
   (when (file-exists-p dir)
     (let ((files (directory-files dir nil "^[A-Z].*\\.md$")))
       (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
@@ -211,6 +239,7 @@ BUFFER can be a buffer object or a buffer name."
   "Generate shortcuts for templates."
   (let ((shortcuts (make-hash-table :test 'equal))
         (counts (make-hash-table :test 'equal)))
+
     ;; Sort templates first by their display name to ensure alphabetical precedence
     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
     (dolist (template templates)
@@ -218,12 +247,15 @@ BUFFER can be a buffer object or a buffer name."
              (base (downcase (substring name 0 1)))
              (count (gethash base counts 0))
              (new-key base))
+
         ;; Adjust key for duplicates
         (when (> count 0)
           (setq new-key (concat base (make-string count ?'))))
+
         ;; Update hash tables
         (puthash new-key name shortcuts)
         (puthash base (1+ count) counts)))
+
     shortcuts))
 
 (cl-defun genai--select-template ()
@@ -257,6 +289,8 @@ if the input is non-standard or empty."
     ""))
 
 (cl-defun genai--insert-prompt-template-type-and-engine (prompt template-type)
+  "Insert prompt, template type, and engine into *GenAI* buffer.
+PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   (with-current-buffer (get-buffer-create "*GenAI*")
     (goto-char (point-max))
     (insert "\n\n")
@@ -277,7 +311,6 @@ if the input is non-standard or empty."
     (insert (upcase genai-engine))
     (insert "\n\n")
     (goto-char (point-max))
-    ;; (sleep-for 0.1)
     (run-at-time "0 sec" nil #'genai--scroll)))
 
 (cl-defun genai--construct-python-command (prompt)
@@ -285,7 +318,6 @@ if the input is non-standard or empty."
   (interactive "sEnter prompt: ")
 
   (let* ((template-type (genai--select-template))
-         ;; Construct the command using all the required parameters
          (command (format "%s \
                            %s \
                            --api_key %s \
@@ -308,6 +340,7 @@ if the input is non-standard or empty."
                           (genai--safe-shell-quote-argument prompt))))
 
     (genai--insert-prompt-template-type-and-engine prompt template-type)
+
     command))
 
 ;;;###autoload
@@ -365,7 +398,6 @@ Handles different process states and calls cleanup when appropriate."
 (cl-defun genai--clean-up-all ()
   (interactive)
   (genai--clean-up-output))
-  ;; (genai--insert-splitter-after-run))
 
 (cl-defun genai--update-progress ()
   "Update the progress reporter."
@@ -578,11 +610,6 @@ The response will be displayed in the *GenAI* buffer."
 ;; Keybindings
 (define-key genai-mode-map (kbd "M-n") 'genai-next-code-block)
 (define-key genai-mode-map (kbd "M-p") 'genai-previous-code-block)
-
-(defun genai--init ()
-  "Initialize the GenAI package and check Python dependencies."
-  (genai--check-python-dependencies)
-  )
 
 ;; Call the init function upon loading the package.
 (add-hook 'emacs-startup-hook 'genai--init)
