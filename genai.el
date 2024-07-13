@@ -8,7 +8,7 @@
 ;; URL: https://github.com/ywatanabe1989/genai
 ;; Version: 1.0
 ;; License: GNU General Public License (GPL) version 3
-;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6"))
+;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6") (pulse "1.0"))
 
 ;; Keywords: tools, LLM, template
 
@@ -59,6 +59,7 @@
 (require 'markdown-mode)
 (require 'cl-lib)
 (require 'async)
+(require 'ansi-color)
 
 (defvar genai-dependencies-checked nil
   "Whether Python dependencies have been checked.")
@@ -68,15 +69,6 @@
     ;; (define-key map (kbd "C-g") 'genai--stop-python-process)
     map)
   "Keymap for `genai-mode'.")
-
-;; (define-derived-mode genai-mode markdown-mode "GenAI"
-;;   "Major mode for GenAI process management and interaction.
-;; \\{genai-mode-map}"
-;;   :syntax-table markdown-mode-syntax-table
-;;   (use-local-map genai-mode-map)
-;;   ;; Inherit from markdown-mode
-;;   (set (make-local-variable 'font-lock-defaults)
-;;        (get 'markdown-mode 'font-lock-defaults)))
 
 ;; Add the mode to auto-mode-alist for files with certain extensions to open in genai-mode
 (add-to-list 'auto-mode-alist '("\\.genai\\'" . genai-mode))
@@ -181,18 +173,6 @@ This should be a string identifying the specific model or engine version."
               `(lambda () (shell-command-to-string ,(format "%s -m pip install mngs>=1.5.5" genai-python-bin-path)))
               (lambda (_) (message "Package installed/upgraded."))))
          (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path)))))))
-
-;; (cl-defun genai--check-python-dependencies ()
-;;   "Check if python mngs package is installed."
-;;   (interactive)
-;;   (let* ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
-;;                                 genai-python-bin-path))
-;;          (result (shell-command-to-string check-command)))
-;;     (if (string-match "DistributionNotFound\\|VersionConflict" result)
-;;         (if (yes-or-no-p (format "The required Python package 'mngs>=1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
-;;             (shell-command-to-string (format "%s -m pip install mngs>=1.5.5" genai-python-bin-path))
-;;           (error "The Python package 'mngs>=1.5.5' is required for genai.el to function properly."))
-;;       (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path)))))
 
 (cl-defun genai--create-buffer-file (buffer)
   "Create a temporary file with the text in BUFFER and return its file name.
@@ -327,54 +307,8 @@ if the input is non-standard or empty."
                           (genai--safe-shell-quote-argument template-type)
                           (genai--safe-shell-quote-argument prompt))))
 
-    ;; (message "Command: %s" command)  ; Output the constructed command
     (genai--insert-prompt-template-type-and-engine prompt template-type)
     command))
-
-;; ;; working but slow
-;; ;;;###autoload
-;; (defun genai-show-history ()
-;;   "Show the GenAI history in a temporary buffer."
-;;   (interactive)
-;;   (let ((buffer (get-buffer-create "*GenAI All History*")))
-;;     (with-current-buffer buffer
-;;       (erase-buffer)
-;;       (let* ((command (format "%s %s --human_history_path %s"
-;;                               (shell-quote-argument genai-python-bin-path)
-;;                               (shell-quote-argument genai-python-script-path-show-history)
-;;                               (shell-quote-argument genai-history-human-path)))
-;;              ;; Run the command and get its output as a string
-;;              (output (shell-command-to-string command)))
-;;         ;; Insert the output into the buffer
-;;         (insert output))
-;;       ;; Navigate to the top of the buffer
-;;       (goto-char (point-min))
-;;       ;; Enable Markdown mode
-;;       (markdown-mode)
-;;     ;; Display the buffer in a window
-;;     (display-buffer buffer))))
-
-;; ;; working but slow
-;; ;;;###autoload
-;; (defun genai-show-history ()
-;;   "Show the GenAI history in a temporary buffer."
-;;   (interactive)
-;;   (let* ((buffer (get-buffer-create "*GenAI All History*"))
-;;          (temp-file (make-temp-file "genai-history-" nil ".md")))
-;;     (with-current-buffer buffer
-;;       (erase-buffer)
-;;       (let* ((command (format "%s %s --human_history_path %s --output %s"
-;;                               (shell-quote-argument genai-python-bin-path)
-;;                               (shell-quote-argument genai-python-script-path-show-history)
-;;                               (shell-quote-argument genai-history-human-path)
-;;                               (shell-quote-argument temp-file)))
-;;              (output (shell-command-to-string command)))
-;;         (insert-file-contents temp-file)
-;;         (delete-file temp-file))
-;;       ;; (goto-char (point-max))
-;;       (genai--scroll-history)
-;;       (markdown-mode))
-;;     (display-buffer buffer)))
 
 ;;;###autoload
 (defun genai-show-history ()
@@ -414,7 +348,6 @@ if the input is non-standard or empty."
         (insert "[]"))
       (message "History reset successfully")))
 
-
 (defun genai--process-sentinel (_process msg)
   "Custom sentinel for the GenAI process.
 Handles different process states and calls cleanup when appropriate."
@@ -428,21 +361,6 @@ Handles different process states and calls cleanup when appropriate."
     (message "GenAI process encountered an error: %s" msg))
    (t
     (message "GenAI process: %s" msg))))
-
-;; (defun genai--process-sentinel (process msg)
-;;   "Custom sentinel for the GenAI process.
-;; Handles different process states and calls cleanup when appropriate."
-;;   (cond
-;;    ((string-match-p "finished\\|exited" msg)
-;;     (progress-reporter-done genai--progress-reporter)
-;;     (message "GenAI process finished.")
-;;     (genai--clean-up-all))
-;;    ((string-match-p "error" msg)
-;;     (progress-reporter-done genai--progress-reporter)
-;;     (message "GenAI process encountered an error: %s" msg))
-;;    (t
-;;     (message "GenAI process: %s" msg))))
-
 
 (cl-defun genai--clean-up-all ()
   (interactive)
@@ -476,8 +394,6 @@ Handles different process states and calls cleanup when appropriate."
     ;; Start the progress reporter
     (setq genai--progress-reporter (make-progress-reporter "GenAI Processing..." 0 100))
     (genai--update-progress)
-
-    ;; (genai--scroll)
 
     process))
 
@@ -569,8 +485,6 @@ The response will be displayed in the *GenAI* buffer."
             (with-selected-window window
               (recenter 0)))))))
 
-
-
 (cl-defun genai--insert-splitter-after-run ()
   "Insert splitter after retrieving the Gen AI output"
   (interactive)
@@ -579,7 +493,6 @@ The response will be displayed in the *GenAI* buffer."
           (goto-char (point-max))
           (insert genai--splitter)
           (insert "\n\n"))))
-
 
 ;;;###autoload
 (defun genai-copy-last ()
@@ -637,30 +550,6 @@ The response will be displayed in the *GenAI* buffer."
             (message "Copied."))))
     (deactivate-mark))))
 
-;; ;;;###autoload
-;; (defun genai-next-code-block ()
-;;   "Navigate to the next code block and select the content"
-;;   (interactive)
-;;     (with-current-buffer "*GenAI*"
-;;       (if (looking-at genai--code-block-end-delimiter)
-;;           (forward-line 1))
-
-;;       ;; Find the next code block start delimiter
-;;       (when (re-search-forward genai--code-block-start-delimiter nil t)
-;;         (let ((start (point)))
-
-;;           ;; Find the next code block end delimiter
-;;           (if (re-search-forward genai--code-block-end-delimiter nil t)
-;;               (progn
-;;                 (goto-char (match-beginning 0))
-;;                 (set-mark (+ start 1))
-;;                 (activate-mark)
-;;                 (kill-ring-save start (point))
-;;                 (pulse-momentary-highlight-region (+ start 1) (point))
-;;                 (message "Copied."))
-;;             (deactivate-mark))))))
-
-
 ;;;###autoload
 (defun genai-previous-code-block ()
   "Navigate to the previous code block and select the content"
@@ -684,22 +573,6 @@ The response will be displayed in the *GenAI* buffer."
             (deactivate-mark)
             )))))
 
-;; (defun genai--flash-mode-line (color-str &optional n-flash)
-;;   "Flash the mode line's background color.
-;; COLOR-STR is the color to flash.
-;; Optional N-FLASH specifies flash count (default 1)."
-;;   (interactive)
-;;   (let ((original-color (face-background 'mode-line))
-;;         (flash-color color-str)
-;;         (count (or n-flash 1)))
-;;     (dotimes (_ count)
-;;       (set-face-background 'mode-line flash-color)
-;;       (redisplay)
-;;       (sleep-for 0.05)
-;;       (set-face-background 'mode-line original-color)
-;;       (redisplay)
-;;       (sleep-for 0.05))))
-
 (add-hook 'comint-output-filter-functions 'genai--clean-up-output)
 
 ;; Keybindings
@@ -709,7 +582,6 @@ The response will be displayed in the *GenAI* buffer."
 (defun genai--init ()
   "Initialize the GenAI package and check Python dependencies."
   (genai--check-python-dependencies)
-  ;; Additional initialization code here.
   )
 
 ;; Call the init function upon loading the package.
