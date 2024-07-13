@@ -9,7 +9,7 @@ git clone git@github.com:ywatanabe1989/emacs-genai.git $EMACS_GENAI_DIR
 
 ## Demo
 ![Demo](docs/demo-1920.gif)
-s
+
 ## Python Installation for mngs pip package
 ```bash
 PROJ_DIR=$HOME/proj
