@@ -162,15 +162,15 @@ This should be a string identifying the specific model or engine version."
 (cl-defun genai--check-python-dependencies ()
   "Check if python mngs package is installed."
   (interactive)
-  (let ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
+  (let ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs==1.5.5\")'"
                                genai-python-bin-path)))
     (async-start
      `(lambda () (shell-command-to-string ,check-command))
      (lambda (result)
        (if (string-match "DistributionNotFound\\|VersionConflict" result)
-           (when (yes-or-no-p (format "The required Python package 'mngs>=1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
+           (when (yes-or-no-p (format "The required Python package 'mngs==1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
              (async-start
-              `(lambda () (shell-command-to-string ,(format "%s -m pip install mngs>=1.5.5" genai-python-bin-path)))
+              `(lambda () (shell-command-to-string ,(format "%s -m pip install mngs==1.5.5" genai-python-bin-path)))
               (lambda (_) (message "Package installed/upgraded."))))
          (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path)))))))
 
