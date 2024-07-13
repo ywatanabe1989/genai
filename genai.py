@@ -1,6 +1,6 @@
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-06-30 15:33:42 (ywatanabe)"
+# Time-stamp: "2024-07-08 19:38:27 (ywatanabe)"
 # genai.py
 
 """
@@ -89,6 +89,8 @@ def run_genai(
     prompt,
 ):
 
+    GENERAL_INSTRUCTION = "## General Instruction\n\nI am busy, so please avoid unnecessary messages. Keep your output minimal. When programming code is provided, please concentrate on differences between my input and your output; always be concise and stick to the point.\n\n"
+
     # Handle histories
     ai_history_path = human_history_path.replace("human", "ai")
     human_history, ai_history = load_histories(
@@ -102,6 +104,9 @@ def run_genai(
     # AI prompt = template + prompt
     template = determine_template(template_type)
     ai_prompt = template.replace("PLACEHOLDER", prompt)
+
+    # Adds the general instruction
+    ai_prompt = GENERAL_INSTRUCTION + ai_prompt
 
     # Main
     if prompt.strip() == "":

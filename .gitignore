@@ -1,3 +1,5 @@
 history-human-secret.json
 history-ai-secret.json
 templates/.SciWrite.md
+.genai.py.~undo-tree~
+*.~undo*
