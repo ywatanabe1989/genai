@@ -8,6 +8,7 @@
 ;; URL: https://github.com/ywatanabe1989/genai
 ;; Version: 1.0
 ;; License: GNU General Public License (GPL) version 3
+;; SPDX-License-Identifier: GPL-3.0-or-later
 ;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6") (pulse "1.0"))
 
 ;; Keywords: tools, LLM, template
@@ -458,7 +459,6 @@ Handles different process states and calls cleanup when appropriate."
 
   (with-current-buffer (get-buffer-create "*GenAI*")
     (goto-char (point-max))
-    ;; (font-lock-fontify-buffer)
     (font-lock-ensure)
     (message "GenAI: Running...")
     (genai--start-python-process prompt))))
