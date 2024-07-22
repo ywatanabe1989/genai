@@ -1,6 +1,6 @@
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-07-08 19:38:27 (ywatanabe)"
+# Time-stamp: "2024-07-14 18:47:05 (ywatanabe)"
 # genai.py
 
 """
@@ -69,6 +69,19 @@ def update_ai_history(ai_history, ai_history_path, model):
     for history in model.history[-n_new_history:]:
         ai_history.append(history)
     mngs_io_save(ai_history, ai_history_path, verbose=False)
+
+
+# def update_ai_history(ai_history, ai_history_path, model):
+#     n_new_history = 2  # This should be set to the number of new entries expected from the model
+#     new_histories = model.history[-n_new_history:]
+#     for idx, history in enumerate(new_histories):
+#         expected_role = "assistant" if idx % 2 == 0 else "user"
+#         if history["role"] != expected_role:
+#             raise ValueError(
+#                 f"AI history role mismatch: Expected {expected_role}, got {history['role']}"
+#             )
+#         ai_history.append(history)
+#     mngs_io_save(ai_history, ai_history_path, verbose=False)
 
 
 def determine_template(template_type):
