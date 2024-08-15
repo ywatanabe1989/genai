@@ -139,10 +139,17 @@
   "Path to the history file used by genai.el."
   :type 'string)
 
-(defcustom genai-api-key (getenv "GENAI_API_KEY")
-  "The API key to use."
-  :type 'string)
+(defcustom genai-api-keys ""
+  "A string containing GenAI API keys, separated by commas."
+  :type 'string
+  :group 'genai)
 
+(defcustom genai-api-keys-parsed nil
+  "List of GenAI API keys parsed from `genai-api-keys`."
+  :type '(repeat string)
+  :group 'genai)
+
+;; Call the parse function to process the API keys
 (defcustom genai-engine (getenv "GENAI_ENGINE")
   "The LLM engine to use, such as ChatGPT, Claude, Gemini."
   :type 'string
@@ -237,6 +244,7 @@ BUFFER can be a buffer object or a buffer name."
     (let ((files (directory-files dir nil "^[A-Z].*\\.md$")))
       (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
 
+
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates."
   (let ((shortcuts (make-hash-table :test 'equal))
@@ -315,14 +323,28 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (goto-char (point-max))
     (run-at-time "0 sec" nil #'genai--scroll)))
 
-(cl-defun genai--construct-python-command (prompt)
+(defun genai--parse-api-keys ()
+  "Parse API keys from `genai-api-keys` and store them in `genai-api-keys-parsed`."
+  (interactive)
+
+  ;; Check if the API keys string is not empty
+  (unless (string-empty-p genai-api-keys)
+    (let ((keys-list (split-string genai-api-keys ":")))
+      (setq genai-api-keys-parsed keys-list)  ;; Set the variable to the list of extracted API keys
+      (message "Parsed API Keys: %S" genai-api-keys-parsed))))
+
+
+(defun genai--construct-python-command (prompt)
   "Construct complete command string for starting the GenAI Python process."
   (interactive "sEnter prompt: ")
 
   (let* ((template-type (genai--select-template))
+         (prompt-arg (if (or (null prompt) (string-empty-p prompt))
+                         "''" ; Empty string between apostrophes
+                         (genai--safe-shell-quote-argument prompt)))
          (command (format "%s \
                            %s \
-                           --api_key %s \
+                           %s \
                            --engine %s \
                            --max_tokens %s \
                            --temperature %s \
@@ -332,18 +354,85 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                            --prompt %s"
                           (genai--safe-shell-quote-argument genai-python-bin-path)
                           (genai--safe-shell-quote-argument genai-python-script-path)
-                          (genai--safe-shell-quote-argument genai-api-key)
+                          (mapconcat
+                           (lambda (api-key)
+                             (concat "--api_key " (genai--safe-shell-quote-argument api-key)))
+                           genai-api-keys-parsed " ")
                           (genai--safe-shell-quote-argument genai-engine)
                           (genai--safe-shell-quote-argument genai-max-tokens)
                           (genai--safe-shell-quote-argument genai-temperature)
                           (genai--safe-shell-quote-argument genai-history-human-path)
                           (genai--safe-shell-quote-argument genai-n-history)
                           (genai--safe-shell-quote-argument template-type)
-                          (genai--safe-shell-quote-argument prompt))))
+                          prompt-arg)))
 
     (genai--insert-prompt-template-type-and-engine prompt template-type)
+    (message command)
 
     command))
+
+;; (cl-defun genai--construct-python-command (prompt)
+;;   "Construct complete command string for starting the GenAI Python process."
+;;   (interactive "sEnter prompt: ")
+
+;;   (let* ((template-type (genai--select-template))
+;;          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
+;;                          "''" ; Empty string between apostrophes
+;;                          (genai--safe-shell-quote-argument prompt)))
+;;          (command (format "%s \
+;;                            %s \
+;;                            --api_key %s \
+;;                            --engine %s \
+;;                            --max_tokens %s \
+;;                            --temperature %s \
+;;                            --human_history_path %s \
+;;                            --n_history %s \
+;;                            --template_type %s \
+;;                            --prompt %s"
+;;                           (genai--safe-shell-quote-argument genai-python-bin-path)
+;;                           (genai--safe-shell-quote-argument genai-python-script-path)
+;;                           (genai--safe-shell-quote-argument genai-api-key)
+;;                           (genai--safe-shell-quote-argument genai-engine)
+;;                           (genai--safe-shell-quote-argument genai-max-tokens)
+;;                           (genai--safe-shell-quote-argument genai-temperature)
+;;                           (genai--safe-shell-quote-argument genai-history-human-path)
+;;                           (genai--safe-shell-quote-argument genai-n-history)
+;;                           (genai--safe-shell-quote-argument template-type)
+;;                           prompt-arg)))
+
+;;     (genai--insert-prompt-template-type-and-engine prompt template-type)
+
+;;     command))
+
+;; (cl-defun genai--construct-python-command (prompt) ;
+;;   "Construct complete command string for starting the GenAI Python process."
+;;   (interactive "sEnter prompt: ")
+
+;;   (let* ((template-type (genai--select-template))
+;;          (command (format "%s \
+;;                            %s \
+;;                            --api_key %s \
+;;                            --engine %s \
+;;                            --max_tokens %s \
+;;                            --temperature %s \
+;;                            --human_history_path %s \
+;;                            --n_history %s \
+;;                            --template_type %s \
+;;                            --prompt %s"
+;;                           (genai--safe-shell-quote-argument genai-python-bin-path)
+;;                           (genai--safe-shell-quote-argument genai-python-script-path)
+;;                           (genai--safe-shell-quote-argument genai-api-key)
+;;                           (genai--safe-shell-quote-argument genai-engine)
+;;                           (genai--safe-shell-quote-argument genai-max-tokens)
+;;                           (genai--safe-shell-quote-argument genai-temperature)
+;;                           (genai--safe-shell-quote-argument genai-history-human-path)
+;;                           (genai--safe-shell-quote-argument genai-n-history)
+;;                           (genai--safe-shell-quote-argument template-type)
+;;                           (genai--safe-shell-quote-argument prompt))))
+
+;;     (genai--insert-prompt-template-type-and-engine prompt template-type)
+
+;;     command))
 
 ;;;###autoload
 (defun genai-show-history ()
