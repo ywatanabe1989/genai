@@ -242,7 +242,7 @@ BUFFER can be a buffer object or a buffer name."
   (when (file-exists-p dir)
     (let ((files (directory-files dir nil "^[A-Z].*\\.md$")))
       (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
-
+;; sort: Invalid function: (macro lambda (a b) (list 'not (list 'or (list 'string= a b) (list 'string< a b))))
 
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates."
@@ -332,10 +332,11 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (setq genai-api-keys-parsed keys-list)  ;; Set the variable to the list of extracted API keys
       (message "Parsed API Keys: %S" genai-api-keys-parsed))))
 
-
 (defun genai--construct-python-command (prompt)
   "Construct complete command string for starting the GenAI Python process."
   (interactive "sEnter prompt: ")
+
+  (genai--parse-api-keys)
 
   (let* ((template-type (genai--select-template))
          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
@@ -504,6 +505,9 @@ Handles different process states and calls cleanup when appropriate."
    If a process is already running, stop it before starting a new one."
   (interactive "sEnter prompt: ")
 
+  ;; ;; Get API Keys
+  ;; (genai--parse-api-keys)
+
   ;; Stop existing process if running
   (when (and genai--process (process-live-p genai--process))
     (interrupt-process genai--process)
@@ -572,6 +576,8 @@ The response will be displayed in the *GenAI* buffer."
     (with-current-buffer buffer
       (unless (eq major-mode 'genai-mode)
         (genai-mode)))
+
+    (message region-text)
 
     ;; Run the Gen AI
     (genai--run region-text)
