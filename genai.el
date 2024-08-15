@@ -149,7 +149,6 @@
   :type '(repeat string)
   :group 'genai)
 
-;; Call the parse function to process the API keys
 (defcustom genai-engine (getenv "GENAI_ENGINE")
   "The LLM engine to use, such as ChatGPT, Claude, Gemini."
   :type 'string
@@ -341,7 +340,8 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   (let* ((template-type (genai--select-template))
          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
                          "''" ; Empty string between apostrophes
-                         (genai--safe-shell-quote-argument prompt)))
+                       (shell-quote-argument (replace-regexp-in-string "'" "\\\\'" prompt))))
+                         ;; (genai--safe-shell-quote-argument prompt)))
          (command (format "%s \
                            %s \
                            %s \
@@ -367,9 +367,10 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                           prompt-arg)))
 
     (genai--insert-prompt-template-type-and-engine prompt template-type)
-    (message command)
 
     command))
+
+
 
 ;; (cl-defun genai--construct-python-command (prompt)
 ;;   "Construct complete command string for starting the GenAI Python process."
