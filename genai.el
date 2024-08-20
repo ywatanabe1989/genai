@@ -289,7 +289,7 @@ if the input is non-standard or empty."
       (when (called-interactively-p 'interactive)
         (message "Template type selected: %s" template-type))
 
-        template-type)))
+      template-type)))
 
 (cl-defun genai--safe-shell-quote-argument (arg)
   "Safely shell-quote ARG if non-nil and non-empty, else return an empty string."
@@ -330,7 +330,8 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   (unless (string-empty-p genai-api-keys)
     (let ((keys-list (split-string genai-api-keys ":")))
       (setq genai-api-keys-parsed keys-list)  ;; Set the variable to the list of extracted API keys
-      (message "Parsed API Keys: %S" genai-api-keys-parsed))))
+      ;; (message "Parsed API Keys: %S" genai-api-keys-parsed)
+      )))
 
 (defun genai--construct-python-command (prompt)
   "Construct complete command string for starting the GenAI Python process."
@@ -339,10 +340,15 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   (genai--parse-api-keys)
 
   (let* ((template-type (genai--select-template))
+         ;; (prompt-arg (if (or (null prompt) (string-empty-p prompt))
+         ;;                 "''" ; Empty string between apostrophes
+         ;;               (genai--safe-shell-quote-argument prompt)))
+
          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
                          "''" ; Empty string between apostrophes
                        (shell-quote-argument (replace-regexp-in-string "'" "\\\\'" prompt))))
-                         ;; (genai--safe-shell-quote-argument prompt)))
+
+         ;; (genai--safe-shell-quote-argument prompt)))
          (command (format "%s \
                            %s \
                            %s \
@@ -468,11 +474,11 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   "Resets the history files for human and AI, but asks for confirmation first."
   (interactive)
   (when (yes-or-no-p "Are you sure you want to reset the history?")
-      (with-temp-file genai-history-human-path
-        (insert "[]"))
-      (with-temp-file genai-history-ai-path
-        (insert "[]"))
-      (message "History reset successfully")))
+    (with-temp-file genai-history-human-path
+      (insert "[]"))
+    (with-temp-file genai-history-ai-path
+      (insert "[]"))
+    (message "History reset successfully")))
 
 (defun genai--process-sentinel (_process msg)
   "Custom sentinel for the GenAI process.
@@ -552,11 +558,11 @@ Handles different process states and calls cleanup when appropriate."
         (keyboard-quit)
         (message "Jump to the \"*GenAI*\" buffer"))
 
-  (with-current-buffer (get-buffer-create "*GenAI*")
-    (goto-char (point-max))
-    (font-lock-ensure)
-    (message "GenAI: Running...")
-    (genai--start-python-process prompt))))
+    (with-current-buffer (get-buffer-create "*GenAI*")
+      (goto-char (point-max))
+      (font-lock-ensure)
+      (message "GenAI: Running...")
+      (genai--start-python-process prompt))))
 
 ;;;###autoload
 (defun genai-on-region ()
@@ -576,8 +582,6 @@ The response will be displayed in the *GenAI* buffer."
     (with-current-buffer buffer
       (unless (eq major-mode 'genai-mode)
         (genai-mode)))
-
-    (message region-text)
 
     ;; Run the Gen AI
     (genai--run region-text)
@@ -618,11 +622,11 @@ The response will be displayed in the *GenAI* buffer."
 (cl-defun genai--insert-splitter-after-run ()
   "Insert splitter after retrieving the Gen AI output"
   (interactive)
-    (if-let ((genai-buffer (get-buffer "*GenAI*")))
-        (with-current-buffer genai-buffer
-          (goto-char (point-max))
-          (insert genai--splitter)
-          (insert "\n\n"))))
+  (if-let ((genai-buffer (get-buffer "*GenAI*")))
+      (with-current-buffer genai-buffer
+        (goto-char (point-max))
+        (insert genai--splitter)
+        (insert "\n\n"))))
 
 ;;;###autoload
 (defun genai-copy-last ()
@@ -641,8 +645,8 @@ The response will be displayed in the *GenAI* buffer."
   (interactive)
   (with-current-buffer (get-buffer "*GenAI*")
     (goto-char (point-max))
-  (let ((count nil)
-        blocks start end)
+    (let ((count nil)
+          blocks start end)
       (when (search-backward genai--splitter nil t)
         (goto-char (match-end 0))
         (while (re-search-forward genai--code-block-start-delimiter nil t)
@@ -678,30 +682,30 @@ The response will be displayed in the *GenAI* buffer."
             (kill-ring-save start end)
             (pulse-momentary-highlight-region (1+ start) end)
             (message "Copied."))))
-    (deactivate-mark))))
+      (deactivate-mark))))
 
 ;;;###autoload
 (defun genai-previous-code-block ()
   "Navigate to the previous code block and select the content"
   (interactive)
-    (with-current-buffer "*GenAI*"
+  (with-current-buffer "*GenAI*"
 
-      ;; Find the previous code block end delimiter
-      (when (re-search-backward genai--code-block-end-delimiter nil t)
-        (backward-char)
-        (let ((end (point)))
+    ;; Find the previous code block end delimiter
+    (when (re-search-backward genai--code-block-end-delimiter nil t)
+      (backward-char)
+      (let ((end (point)))
 
-          ;; Find the previous code block start delimiter
-          (if (re-search-backward genai--code-block-start-delimiter nil t)
-              (progn
-                (forward-line 1)
-                (set-mark end)
-                (activate-mark)
-                (kill-ring-save (point) end)
-                (pulse-momentary-highlight-region (+ (point) 1) end)
-                (message "Copied."))
-            (deactivate-mark)
-            )))))
+        ;; Find the previous code block start delimiter
+        (if (re-search-backward genai--code-block-start-delimiter nil t)
+            (progn
+              (forward-line 1)
+              (set-mark end)
+              (activate-mark)
+              (kill-ring-save (point) end)
+              (pulse-momentary-highlight-region (+ (point) 1) end)
+              (message "Copied."))
+          (deactivate-mark)
+          )))))
 
 (add-hook 'comint-output-filter-functions 'genai--clean-up-output)
 
