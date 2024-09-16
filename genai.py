@@ -1,6 +1,6 @@
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-08-17 15:21:48 (ywatanabe)"
+# Time-stamp: "2024-09-17 09:01:06 (ywatanabe)"
 # genai.py
 
 """
@@ -8,14 +8,15 @@ This script calls GenAI API
 """
 
 import argparse
-import os
 import warnings
 
 from mngs.ai import GenAI as mngs_ai_GenAI
-from mngs.gen import natglob as mngs_gen_natglob
+from mngs.io import glob as mngs_io_glob
 from mngs.io import load as mngs_io_load
 from mngs.io import save as mngs_io_save
 from mngs.path import split as mngs_path_split
+
+__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
 
 
 ## Functions
@@ -36,7 +37,7 @@ def load_histories(human_history_path, ai_history_path):
 
 def load_templates():
     TEMPLATE_DIR = mngs_path_split(__file__)[0] + "./templates/"
-    TEMPLATE_PATHS = mngs_gen_natglob(TEMPLATE_DIR.replace("/./", "/") + "*")
+    TEMPLATE_PATHS = mngs_io_glob(TEMPLATE_DIR.replace("/./", "/") + "*")
 
     TEMPLATE_NAMES = [
         "".join(mngs_path_split(tp)[1:]) for tp in TEMPLATE_PATHS
@@ -71,19 +72,6 @@ def update_ai_history(ai_history, ai_history_path, model):
     mngs_io_save(ai_history, ai_history_path, verbose=False)
 
 
-# def update_ai_history(ai_history, ai_history_path, model):
-#     n_new_history = 2  # This should be set to the number of new entries expected from the model
-#     new_histories = model.history[-n_new_history:]
-#     for idx, history in enumerate(new_histories):
-#         expected_role = "assistant" if idx % 2 == 0 else "user"
-#         if history["role"] != expected_role:
-#             raise ValueError(
-#                 f"AI history role mismatch: Expected {expected_role}, got {history['role']}"
-#             )
-#         ai_history.append(history)
-#     mngs_io_save(ai_history, ai_history_path, verbose=False)
-
-
 def determine_template(template_type):
     TEMPLATES = load_templates()
     if str(template_type) == "None":
@@ -112,7 +100,12 @@ def run_genai(
 
     # Model initialization
     model = mngs_ai_GenAI(
-        model=engine, api_key=api_keys, stream=True, n_keep=n_history
+        model=engine,
+        api_key=api_keys,
+        stream=True,
+        n_keep=n_history,
+        max_tokens=max_tokens,
+        temperature=temperature,
     )
     [model.update_history(**_history) for _history in ai_history[-n_history:]]
 
@@ -128,22 +121,23 @@ def run_genai(
         model_out = "Please input prompt"
         print(model_out + "\n")
     else:
-        try:
-            model_out = model(
-                ai_prompt
-            )  # Print AI output in a streaming manner
-        except Exception as e:
-            print(e)
-            model.reset()
-            warnings.warn(
-                "\nThere was something wrong with the chat history handling. "
-                "Feeding only the last user input."
-            )
-            model.update_history(role="user", content=ai_prompt)
-            model_out = model(
-                ai_prompt
-            )  # Print AI output in a streaming manner
-        print("\n")
+        model_out = model(ai_prompt)  # Print AI output in a streaming manner
+        # try:
+        #     model_out = model(
+        #         ai_prompt
+        #     )  # Print AI output in a streaming manner
+        # except Exception as e:
+        #     print(e)
+        #     model.reset()
+        #     warnings.warn(
+        #         "\nThere was something wrong with the chat history handling. "
+        #         "Feeding only the last user input."
+        #     )
+        #     model.update_history(role="user", content=ai_prompt)
+        #     model_out = model(
+        #         ai_prompt
+        #     )  # Print AI output in a streaming manner
+        # print("\n")
 
     # Update chat histories
     update_human_history(

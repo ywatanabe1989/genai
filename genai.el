@@ -202,17 +202,18 @@ before running any GenAI functionality."
 (cl-defun genai--check-python-dependencies ()
   "Check if python mngs package is installed."
   (interactive)
-  (let ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs==1.5.5\")'"
+  (let ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
                                genai-python-bin-path)))
     (async-start
      `(lambda () (shell-command-to-string ,check-command))
      (lambda (result)
        (if (string-match "DistributionNotFound\\|VersionConflict" result)
-           (when (yes-or-no-p (format "The required Python package 'mngs==1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
+           (when (yes-or-no-p (format "The required Python package 'mngs>=1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
              (async-start
-              `(lambda () (shell-command-to-string ,(format "%s -m pip install mngs==1.5.5" genai-python-bin-path)))
+              `(lambda () (shell-command-to-string ,(format "%s -m pip install 'mngs>=1.5.5'" genai-python-bin-path)))
               (lambda (_) (message "Package installed/upgraded."))))
-         (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path)))))))
+         ;; (message (format "All required Python packages are installed and up-to-date for %s." genai-python-bin-path))
+         )))))
 
 (cl-defun genai--create-buffer-file (buffer)
   "Create a temporary file with the text in BUFFER and return its file name.
@@ -340,13 +341,13 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   (genai--parse-api-keys)
 
   (let* ((template-type (genai--select-template))
-         ;; (prompt-arg (if (or (null prompt) (string-empty-p prompt))
-         ;;                 "''" ; Empty string between apostrophes
-         ;;               (genai--safe-shell-quote-argument prompt)))
-
          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
                          "''" ; Empty string between apostrophes
-                       (shell-quote-argument (replace-regexp-in-string "'" "\\\\'" prompt))))
+                       (genai--safe-shell-quote-argument prompt)))
+
+         ;; (prompt-arg (if (or (null prompt) (string-empty-p prompt))
+         ;;                 "''" ; Empty string between apostrophes
+         ;;               (shell-quote-argument (replace-regexp-in-string "'" "\\\\'" prompt))))
 
          ;; (genai--safe-shell-quote-argument prompt)))
          (command (format "%s \

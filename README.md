@@ -46,3 +46,4 @@ Templates can be managed under the ['./templates'](./templates) directory (defau
 
 ## TODO
 
+- ediff-regions
