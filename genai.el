@@ -243,7 +243,6 @@ BUFFER can be a buffer object or a buffer name."
   (when (file-exists-p dir)
     (let ((files (directory-files dir nil "^[A-Z].*\\.md$")))
       (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
-;; sort: Invalid function: (macro lambda (a b) (list 'not (list 'or (list 'string= a b) (list 'string< a b))))
 
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates."
@@ -378,108 +377,96 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
     command))
 
-
-
-;; (cl-defun genai--construct-python-command (prompt)
-;;   "Construct complete command string for starting the GenAI Python process."
-;;   (interactive "sEnter prompt: ")
-
-;;   (let* ((template-type (genai--select-template))
-;;          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
-;;                          "''" ; Empty string between apostrophes
-;;                          (genai--safe-shell-quote-argument prompt)))
-;;          (command (format "%s \
-;;                            %s \
-;;                            --api_key %s \
-;;                            --engine %s \
-;;                            --max_tokens %s \
-;;                            --temperature %s \
-;;                            --human_history_path %s \
-;;                            --n_history %s \
-;;                            --template_type %s \
-;;                            --prompt %s"
-;;                           (genai--safe-shell-quote-argument genai-python-bin-path)
-;;                           (genai--safe-shell-quote-argument genai-python-script-path)
-;;                           (genai--safe-shell-quote-argument genai-api-key)
-;;                           (genai--safe-shell-quote-argument genai-engine)
-;;                           (genai--safe-shell-quote-argument genai-max-tokens)
-;;                           (genai--safe-shell-quote-argument genai-temperature)
-;;                           (genai--safe-shell-quote-argument genai-history-human-path)
-;;                           (genai--safe-shell-quote-argument genai-n-history)
-;;                           (genai--safe-shell-quote-argument template-type)
-;;                           prompt-arg)))
-
-;;     (genai--insert-prompt-template-type-and-engine prompt template-type)
-
-;;     command))
-
-;; (cl-defun genai--construct-python-command (prompt) ;
-;;   "Construct complete command string for starting the GenAI Python process."
-;;   (interactive "sEnter prompt: ")
-
-;;   (let* ((template-type (genai--select-template))
-;;          (command (format "%s \
-;;                            %s \
-;;                            --api_key %s \
-;;                            --engine %s \
-;;                            --max_tokens %s \
-;;                            --temperature %s \
-;;                            --human_history_path %s \
-;;                            --n_history %s \
-;;                            --template_type %s \
-;;                            --prompt %s"
-;;                           (genai--safe-shell-quote-argument genai-python-bin-path)
-;;                           (genai--safe-shell-quote-argument genai-python-script-path)
-;;                           (genai--safe-shell-quote-argument genai-api-key)
-;;                           (genai--safe-shell-quote-argument genai-engine)
-;;                           (genai--safe-shell-quote-argument genai-max-tokens)
-;;                           (genai--safe-shell-quote-argument genai-temperature)
-;;                           (genai--safe-shell-quote-argument genai-history-human-path)
-;;                           (genai--safe-shell-quote-argument genai-n-history)
-;;                           (genai--safe-shell-quote-argument template-type)
-;;                           (genai--safe-shell-quote-argument prompt))))
-
-;;     (genai--insert-prompt-template-type-and-engine prompt template-type)
-
-;;     command))
+;;;###autoload
+;; (defun genai-show-history (&optional num-interactions)
+;;   "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
+;;   (interactive "sEnter the number of latest interactions: ")
+;;   (let* ((buffer (get-buffer-create "*GenAI All History*"))
+;;          (temp-file (make-temp-file "genai-history-" nil ".json"))
+;;          (num-interactions (string-to-number (or num-interactions "1000000")))
+;;          (grep-command (format "tac %s | grep -m %d -e '},' -e ']' | tac > %s"
+;;                                genai-history-human-path
+;;                                (* 2 num-interactions)
+;;                                temp-file)))
+;;     (call-process-shell-command grep-command nil nil nil)
+;;     (with-current-buffer buffer
+;;       (erase-buffer))
+;;     (let ((command-list (list genai-python-bin-path
+;;                               genai-python-script-path-show-history
+;;                               "--human_history_path" temp-file
+;;                               "--output" (concat temp-file ".md"))))
+;;       (make-process
+;;        :name "genai-show-history"
+;;        :buffer buffer
+;;        :command command-list
+;;        :sentinel (lambda (process event)
+;;                    (when (string= event "finished\n")
+;;                      (with-current-buffer (process-buffer process)
+;;                        (insert-file-contents (concat temp-file ".md"))
+;;                        (delete-file temp-file)
+;;                        (delete-file (concat temp-file ".md"))
+;;                        (goto-char (point-min))
+;;                        (genai--scroll-history)
+;;                        (markdown-mode)
+;;                        (display-buffer (current-buffer)))))))
+;;     (message "Loading history to *GenAI All History* buffer...")))
 
 ;;;###autoload
-(defun genai-show-history ()
-  "Show the GenAI history in a temporary buffer."
-  (interactive)
-  (let ((buffer (get-buffer-create "*GenAI All History*"))
-        (temp-file (make-temp-file "genai-history-" nil ".md")))
+
+(defun genai-show-history (&optional num-interactions)
+  "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
+  (interactive "nNumber of Interactions: ")
+  (let* ((buffer (get-buffer-create "*GenAI All History*"))
+         (temp-file "/tmp/genai-history.json")
+         (num-interactions (or num-interactions 3))
+         (command-list (list genai-python-bin-path
+                             genai-python-script-path-show-history
+                             "--human_history_path" genai-history-human-path
+                             "--output" (concat temp-file ".md")
+                             "--n_interactions" (number-to-string num-interactions))))
     (with-current-buffer buffer
       (erase-buffer))
-    (let ((command-list (list genai-python-bin-path
-                              genai-python-script-path-show-history
-                              "--human_history_path" genai-history-human-path
-                              "--output" temp-file)))
-      (make-process
-       :name "genai-show-history"
-       :buffer buffer
-       :command command-list
-       :sentinel (lambda (process event)
-                   (when (string= event "finished\n")
-                     (with-current-buffer (process-buffer process)
-                       (insert-file-contents temp-file)
-                       (delete-file temp-file)
-                       (goto-char (point-min))
-                       (genai--scroll-history)
-                       (markdown-mode)
-                       (display-buffer (current-buffer)))))))
-    (message "Loading history...")))
+    (make-process
+     :name "genai-show-history"
+     :buffer buffer
+     :command command-list
+     :sentinel (lambda (process event)
+                 (when (string= event "finished\n")
+                   (with-current-buffer (process-buffer process)
+                     (insert-file-contents (concat temp-file ".md"))
+                     (delete-file (concat temp-file ".md"))
+                     (goto-char (point-min))
+                     (genai--scroll-history)
+                     (markdown-mode)
+                     (display-buffer (current-buffer) '((display-buffer-in-side-window) (side . right) (window-width . 0.5)))))))
+    (message "Loading history to *GenAI All History*...")))
 
 ;;;###autoload
 (defun genai-reset-history ()
-  "Resets the history files for human and AI, but asks for confirmation first."
+  "Backup and reset the GenAI history files."
   (interactive)
-  (when (yes-or-no-p "Are you sure you want to reset the history?")
+  (let* ((backup-dir (concat genai-home-dir "histories"))
+         (timestamp (format-time-string "%Y-%m-%d-%H-%M-%S"))
+         (human-backup (concat backup-dir "/history-human-" timestamp ".json"))
+         (ai-backup (concat backup-dir "/history-ai-" timestamp ".json")))
+    
+    ;; Create backup directory if it doesn't exist
+    (unless (file-exists-p backup-dir)
+      (make-directory backup-dir t))
+    
+    ;; Backup existing history files
+    (when (file-exists-p genai-history-human-path)
+      (rename-file genai-history-human-path human-backup))
+    (when (file-exists-p genai-history-ai-path)
+      (rename-file genai-history-ai-path ai-backup))
+    
+    ;; Create new empty history files
     (with-temp-file genai-history-human-path
       (insert "[]"))
     (with-temp-file genai-history-ai-path
       (insert "[]"))
-    (message "History reset successfully")))
+    
+    (message "GenAI history has been reset. Backups created in %s" backup-dir)))
 
 (defun genai--process-sentinel (_process msg)
   "Custom sentinel for the GenAI process.

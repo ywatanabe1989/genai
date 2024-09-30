@@ -1,5 +1,6 @@
 
 ### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/Specific.gitignore ###
+histories/*
 history-human-secret.json
 history-ai-secret.json
 templates/.SciWrite.md
