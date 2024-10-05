@@ -1,6 +1,6 @@
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-09-17 09:01:06 (ywatanabe)"
+# Time-stamp: "2024-10-04 15:40:45 (ywatanabe)"
 # genai.py
 
 """
@@ -16,7 +16,7 @@ from mngs.io import load as mngs_io_load
 from mngs.io import save as mngs_io_save
 from mngs.path import split as mngs_path_split
 
-__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
+# __file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
 
 
 ## Functions

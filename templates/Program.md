@@ -28,7 +28,9 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
   (DEBUGGED CODE HERE)
   ```
 
-- The code may include my Python package, mngs. Keep its syntax unchanged.
+- Code may include my Python package, mngs. Keep its syntax unchanged.
+
+- In python, please do not forget to write variable types explicitly for functions and classes.
 
 - Do not change headers (such as time stamp, file name, authors) and footers of the code (like #EOF).
 
@@ -41,7 +43,29 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 - P-values should be output with stars, using this function, mngs.stats.p2stars:
   - ``` python
     # mngs.stats.p2stars
-    def p2stars(pvalue):
+    def p2stars(pvalue: float) -> str:
+        """
+        Convert p-value to significance stars.
+
+        Parameters
+        ----------
+        pvalue : float
+            The p-value to convert.
+
+        Returns
+        -------
+        str
+            Significance stars or "ns" for non-significant.
+
+        Example
+        -------
+        >>> p2stars(0.0005)
+        '***'
+        >>> p2stars(0.03)
+        '*'
+        >>> p2stars(0.1)
+        'ns'
+        """
         if pvalue <= 0.001:
             return "***"
         elif pvalue <= 0.01:
@@ -102,16 +126,17 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 - Use the following docstring styles.
 	- For Python, use the NumPy style:
         ``` python
-        def func(arg1, arg2):
+        def func(arg1: int, arg2: str) -> bool:
             """Summary line.
 
             Extended description of function.
 
             Example
             ----------
-            x, y = 1, 2
-            out = func(x, y)
-			print(out)
+            >>> xx, yy = 1, "test"
+            >>> out = func(xx, yy)
+            >>> print(out)
+            True
 
             Parameters
             ----------
@@ -129,12 +154,15 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
             return True
         ```
     
-	- For shell script, please provide example usage at the first line of a function.
+	- For shell script, please provide one-line explanation, followed by example usage at the first lines of a function.
         ``` bash
         my-echo() {
-          # print the arguments with my signature
+          # Print the arguments with my signature
+          #
+          # Usage
+          # my-echo Hello # Hello (Yusuke Watanabe)
 
-          echo "$@"" (Yusuke Watanabe)"
+          echo "$@" "(Yusuke Watanabe)"
         }
         ```
 
