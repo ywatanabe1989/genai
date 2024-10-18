@@ -238,11 +238,23 @@ BUFFER can be a buffer object or a buffer name."
        (message "Error creating buffer file: %s" (error-message-string err))
        nil))))
 
+;; (cl-defun genai--fetch-templates (dir)
+;;   "Return list of templates file names that start with capital letters."
+;;   (when (file-exists-p dir)
+;;     (let ((files (directory-files dir nil "^[A-Z].*\\.md$")))
+;;       (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
+
 (cl-defun genai--fetch-templates (dir)
-  "Return list of templates file names that start with capital letters."
+  "Return list of templates file names that contain capital letters."
   (when (file-exists-p dir)
-    (let ((files (directory-files dir nil "^[A-Z].*\\.md$")))
-      (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
+    (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
+      (sort (mapcar (lambda (f) 
+                      (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
+                        (if (string= f "parapHrase.md")
+                            (format "h (%s)" name-without-ext)
+                          name-without-ext)))
+                    files) 
+            'string>))))
 
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates."
@@ -267,6 +279,54 @@ BUFFER can be a buffer object or a buffer name."
 
     shortcuts))
 
+;; (cl-defun genai--select-template ()
+;;   "Prompt the user to select a template type for the GenAI model.
+;; If INITIAL-INPUT is non-nil, it returns it without prompting.
+;; Otherwise, it prompts the user with available templates.
+;; Returns the selected template type or None
+;; if the input is non-standard or empty."
+;;   (interactive)
+;;   (unless (minibufferp)
+;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
+;;            (templates-with-shortcuts (mapcar (lambda (template) (cons template template)) capital-templates))
+;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
+;;            (shortcut-list (hash-table-keys shortcuts))
+;;            (prompt (concat "Enter or select preceeding prompt: "
+;;                            (mapconcat (lambda (key) (concat "(" key ") " (gethash key shortcuts)))
+;;                                       (reverse shortcut-list) ", ") ":\n"))
+;;            (input (read-string prompt))
+
+;;            (template-type (or (gethash input shortcuts) (if (string-blank-p input) "None" input))))
+
+;;       (message input) ;; if this is "r", I would not like to open the GenAI buffer
+;;       (when (called-interactively-p 'interactive)
+;;         (message "Template type selected: %s" template-type))
+
+;;       template-type)))
+;; (cl-defun genai--select-template ()
+;;   "Prompt the user to select a template type for the GenAI model.
+;; If INITIAL-INPUT is non-nil, it returns it without prompting.
+;; Otherwise, it prompts the user with available templates.
+;; Returns the selected template type or None
+;; if the input is non-standard or empty."
+;;   (interactive)
+;;   (unless (minibufferp)
+;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
+;;            (templates-with-shortcuts (mapcar (lambda (template) (cons template template)) capital-templates))
+;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
+;;            (shortcut-list (hash-table-keys shortcuts))
+;;            (prompt (concat "Enter or select preceeding prompt: "
+;;                            (mapconcat (lambda (key) (concat "(" key ") " (gethash key shortcuts)))
+;;                                       (reverse shortcut-list) ", ") ":\n"))
+;;            (input (read-string prompt))
+;;            (template-type (or (gethash input shortcuts) (if (string-blank-p input) "None" input))))
+
+;;       (if (string= input "r")
+;;           (progn (message input) nil)
+;;         (when (called-interactively-p 'interactive)
+;;           (message "Template type selected: %s" template-type))
+;;         template-type))))
+
 (cl-defun genai--select-template ()
   "Prompt the user to select a template type for the GenAI model.
 If INITIAL-INPUT is non-nil, it returns it without prompting.
@@ -283,13 +343,16 @@ if the input is non-standard or empty."
                            (mapconcat (lambda (key) (concat "(" key ") " (gethash key shortcuts)))
                                       (reverse shortcut-list) ", ") ":\n"))
            (input (read-string prompt))
-
            (template-type (or (gethash input shortcuts) (if (string-blank-p input) "None" input))))
 
-      (when (called-interactively-p 'interactive)
-        (message "Template type selected: %s" template-type))
+      (unless (string= input "r")
+        (display-buffer (get-buffer-create "*GenAI*")))
 
-      template-type)))
+      (if (string= input "r")
+          (progn (message input) "r")
+        (when (called-interactively-p 'interactive)
+          (message "Template type selected: %s" template-type))
+        template-type))))
 
 (cl-defun genai--safe-shell-quote-argument (arg)
   "Safely shell-quote ARG if non-nil and non-empty, else return an empty string."
@@ -344,11 +407,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                          "''" ; Empty string between apostrophes
                        (genai--safe-shell-quote-argument prompt)))
 
-         ;; (prompt-arg (if (or (null prompt) (string-empty-p prompt))
-         ;;                 "''" ; Empty string between apostrophes
-         ;;               (shell-quote-argument (replace-regexp-in-string "'" "\\\\'" prompt))))
-
-         ;; (genai--safe-shell-quote-argument prompt)))
          (command (format "%s \
                            %s \
                            %s \
@@ -499,9 +557,6 @@ Handles different process states and calls cleanup when appropriate."
    If a process is already running, stop it before starting a new one."
   (interactive "sEnter prompt: ")
 
-  ;; ;; Get API Keys
-  ;; (genai--parse-api-keys)
-
   ;; Stop existing process if running
   (when (and genai--process (process-live-p genai--process))
     (interrupt-process genai--process)
@@ -547,10 +602,64 @@ Handles different process states and calls cleanup when appropriate."
         (message "Jump to the \"*GenAI*\" buffer"))
 
     (with-current-buffer (get-buffer-create "*GenAI*")
-      (goto-char (point-max))
+      ;; (goto-char (point-max))
       (font-lock-ensure)
       (message "GenAI: Running...")
       (genai--start-python-process prompt))))
+
+;; (cl-defun genai--run (prompt)
+;;   "Run GenAI command with prompt."
+;;   (interactive)
+;;   (cond
+;;    ((equal prompt "g")
+;;     (switch-to-buffer-other-window "*GenAI*")
+;;     (keyboard-quit)
+;;     (message "Jump to the \"*GenAI*\" buffer"))
+   
+;;    ((equal prompt "r")
+;;     (with-current-buffer (get-buffer-create "*GenAI*")
+;;       (goto-char (point-max))
+;;       (font-lock-ensure)
+;;       (message "GenAI: Running in background...")
+;;       (genai--start-python-process prompt)))
+   
+;;    (t
+;;     (with-current-buffer (get-buffer-create "*GenAI*")
+;;       (goto-char (point-max))
+;;       (font-lock-ensure)
+;;       (message "GenAI: Running...")
+;;       (genai--start-python-process prompt)
+;;       (display-buffer (current-buffer))))))
+
+;; (cl-defun genai--run (&optional prompt)
+;;   "Run GenAI command with prompt."
+;;   (interactive)
+;;   (unless prompt
+;;     (setq prompt (read-string "Prompt: ")))
+
+;;   (cond
+;;    ((equal prompt "g")
+;;     (switch-to-buffer-other-window "*GenAI*")
+;;     (keyboard-quit)
+;;     (message "Jump to the \"*GenAI*\" buffer"))
+   
+;;    ((equal prompt "r")
+;;     (let ((inhibit-message t))
+;;       (with-current-buffer (get-buffer-create "*GenAI*")
+;;         (goto-char (point-max))
+;;         (font-lock-ensure)
+;;         (message prompt)
+;;         (genai--start-python-process prompt)))
+;;     (message "GenAI: Running in background..."))
+   
+;;    (t
+;;     (with-current-buffer (get-buffer-create "*GenAI*")
+;;       (goto-char (point-max))
+;;       (font-lock-ensure)
+;;       (message "GenAI: Running...")
+;;       (genai--start-python-process prompt)
+;;       (display-buffer (current-buffer))))))
+
 
 ;;;###autoload
 (defun genai-on-region ()
@@ -571,11 +680,46 @@ The response will be displayed in the *GenAI* buffer."
       (unless (eq major-mode 'genai-mode)
         (genai-mode)))
 
+    ;; Here, disable text selection (region) if exist
+    (when (use-region-p)
+      (deactivate-mark))
+    
     ;; Run the Gen AI
     (genai--run region-text)
 
     ;; Display the output to the *GenAI* buffer
-    (display-buffer buffer)))
+    ;; (display-buffer buffer)
+    ))
+
+;; ;;;###autoload
+;; (defun genai-on-region ()
+;;   "Run GenAI command on selected region or prompt for input.
+;; If a region is selected, use that text as the prompt.
+;; Otherwise, prompt the user to enter a prompt.
+;; The response will be displayed in the *GenAI* buffer."
+;;   (interactive)
+;;   (genai--init)  ; Ensure initialization at first use.
+;;   (genai--ensure-dependencies)
+;;   (let* ((region-text (if (use-region-p)
+;;                           (if (y-or-n-p "Use selected region as input?")
+;;                               (buffer-substring-no-properties (region-beginning) (region-end))
+;;                             (read-string "Enter prompt: " ""))
+;;                         (read-string "Enter prompt: " "")))
+;;          (buffer (get-buffer-create "*GenAI*")))
+
+;;     ;; Prepare the buffer for output
+;;     (with-current-buffer buffer
+;;       (unless (eq major-mode 'genai-mode)
+;;         (genai-mode)))
+
+;;     ;; Run the Gen AI
+;;     (genai--run region-text)
+
+;;     ;; Display the output to the *GenAI* buffer
+;;     ;; (display-buffer buffer)
+;;     ))
+
+
 
 (cl-defun genai--scroll ()
   "Scrolls to the first genai--splitter from the end of the *GenAI* buffer."
