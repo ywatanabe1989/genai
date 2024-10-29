@@ -1,4 +1,7 @@
-;;; genai.el --- Client for interactive with LLMs -*- lexical-binding: t; -*-
+;;; -*- lexical-binding: t -*-
+;;; Author: ywatanabe
+;;; Time-stamp: <2024-10-29 21:17:42 (ywatanabe)>
+;;; File: genai.el
 
 ;; Copyright (C) 2024 Yusuke Watanabe
 
@@ -239,11 +242,32 @@ BUFFER can be a buffer object or a buffer name."
        nil))))
 
 ;; (cl-defun genai--fetch-templates (dir)
-;;   "Return list of templates file names that start with capital letters."
+;;   "Return list of templates file names that contain capital letters."
 ;;   (when (file-exists-p dir)
-;;     (let ((files (directory-files dir nil "^[A-Z].*\\.md$")))
-;;       (sort (mapcar (lambda (f) (substring f 0 (string-match "\\.md" f))) files) 'string>))))
+;;     (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
+;;       (sort (mapcar (lambda (f) 
+;;                       (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
+;;                         (if (string= f "parapHrase.md")
+;;                             (format "h (%s)" name-without-ext)
+;;                           name-without-ext)))
+;;                     files) 
+;;             'string>))))
 
+;; (cl-defun genai--fetch-templates (dir)
+;;   "Return list of templates file names that contain capital letters."
+;;   (when (file-exists-p dir)
+;;     (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
+;;       (sort (mapcar (lambda (f) 
+;;                       (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
+;;                         (if (string= f "parapHrase.md")
+;;                             (format "h (%s)" name-without-ext)
+;;                           name-without-ext)))
+;;                     files) 
+;;             'string>))))
+
+
+;; if starting with capitale-letter (like Program.md), reterun "(p) Program"
+;; elif not starting with capitale-letter and capital letter is included (like parapHrase.md), reterun "(h) h parapHrase"
 (cl-defun genai--fetch-templates (dir)
   "Return list of templates file names that contain capital letters."
   (when (file-exists-p dir)
@@ -255,6 +279,40 @@ BUFFER can be a buffer object or a buffer name."
                           name-without-ext)))
                     files) 
             'string>))))
+
+(cl-defun genai--fetch-templates (dir)
+  "Return list of formatted template names from DIR that contain capital letters.
+For template starting with capital (e.g., Program.md) returns just the name.
+For template with internal capital (e.g., parapHrase.md) returns 'h parapHrase'.
+Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\" \"Visa\" \"SciWrite\" \"Remember\" \"Program\" \"Email\" \"Correct\" \"Alternative\")"
+  (when (file-exists-p dir)
+    (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
+      (sort (mapcar (lambda (f)
+                      (let* ((name-without-ext (substring f 0 (string-match "\\.md" f)))
+                             (capital-info (--genai-find-first-capital f))
+                             (first-capital (car capital-info))
+                             (capital-pos (cdr capital-info)))
+                        (cond 
+                         ((= capital-pos 0) 
+                          (format "%s" name-without-ext))
+                         (capital-pos
+                          (format "%s %s" first-capital name-without-ext))
+                         (t nil))))
+                    files)
+            'string>))))
+;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
+
+(defun --genai-find-first-capital (string)
+  "Find first capital letter in STRING and return cons of (letter . position).
+Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"  
+  (interactive)
+  (let* ((name (file-name-sans-extension string))
+         (case-fold-search nil)
+         (capital-pos (string-match "[A-Z]" name)))
+    (when capital-pos
+      (cons (downcase (substring name capital-pos (1+ capital-pos)))
+            capital-pos))))
+;; (--genai-find-first-capital "parapHrase.md") ; => (h . 5)
 
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates."
@@ -278,54 +336,6 @@ BUFFER can be a buffer object or a buffer name."
         (puthash base (1+ count) counts)))
 
     shortcuts))
-
-;; (cl-defun genai--select-template ()
-;;   "Prompt the user to select a template type for the GenAI model.
-;; If INITIAL-INPUT is non-nil, it returns it without prompting.
-;; Otherwise, it prompts the user with available templates.
-;; Returns the selected template type or None
-;; if the input is non-standard or empty."
-;;   (interactive)
-;;   (unless (minibufferp)
-;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
-;;            (templates-with-shortcuts (mapcar (lambda (template) (cons template template)) capital-templates))
-;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
-;;            (shortcut-list (hash-table-keys shortcuts))
-;;            (prompt (concat "Enter or select preceeding prompt: "
-;;                            (mapconcat (lambda (key) (concat "(" key ") " (gethash key shortcuts)))
-;;                                       (reverse shortcut-list) ", ") ":\n"))
-;;            (input (read-string prompt))
-
-;;            (template-type (or (gethash input shortcuts) (if (string-blank-p input) "None" input))))
-
-;;       (message input) ;; if this is "r", I would not like to open the GenAI buffer
-;;       (when (called-interactively-p 'interactive)
-;;         (message "Template type selected: %s" template-type))
-
-;;       template-type)))
-;; (cl-defun genai--select-template ()
-;;   "Prompt the user to select a template type for the GenAI model.
-;; If INITIAL-INPUT is non-nil, it returns it without prompting.
-;; Otherwise, it prompts the user with available templates.
-;; Returns the selected template type or None
-;; if the input is non-standard or empty."
-;;   (interactive)
-;;   (unless (minibufferp)
-;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
-;;            (templates-with-shortcuts (mapcar (lambda (template) (cons template template)) capital-templates))
-;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
-;;            (shortcut-list (hash-table-keys shortcuts))
-;;            (prompt (concat "Enter or select preceeding prompt: "
-;;                            (mapconcat (lambda (key) (concat "(" key ") " (gethash key shortcuts)))
-;;                                       (reverse shortcut-list) ", ") ":\n"))
-;;            (input (read-string prompt))
-;;            (template-type (or (gethash input shortcuts) (if (string-blank-p input) "None" input))))
-
-;;       (if (string= input "r")
-;;           (progn (message input) nil)
-;;         (when (called-interactively-p 'interactive)
-;;           (message "Template type selected: %s" template-type))
-;;         template-type))))
 
 (cl-defun genai--select-template ()
   "Prompt the user to select a template type for the GenAI model.
@@ -353,6 +363,7 @@ if the input is non-standard or empty."
         (when (called-interactively-p 'interactive)
           (message "Template type selected: %s" template-type))
         template-type))))
+
 
 (cl-defun genai--safe-shell-quote-argument (arg)
   "Safely shell-quote ARG if non-nil and non-empty, else return an empty string."
@@ -848,3 +859,6 @@ The response will be displayed in the *GenAI* buffer."
 (provide 'genai)
 
 ;;; genai.el ends here
+
+
+(message "%s was loaded." (file-name-nondirectory (or load-file-name buffer-file-name)))

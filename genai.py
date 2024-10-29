@@ -1,6 +1,6 @@
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-10-04 15:40:45 (ywatanabe)"
+# Time-stamp: "2024-10-27 12:25:36 (ywatanabe)"
 # genai.py
 
 """
@@ -24,13 +24,13 @@ def load_histories(human_history_path, ai_history_path):
     try:
         human_history = mngs_io_load(human_history_path)
     except Exception as e:
-        print(e)
+        warnings.warn(str(e) + f"\nCreating new history file: {human_history_path}")
         human_history = []
 
     try:
         ai_history = mngs_io_load(ai_history_path)
     except Exception as e:
-        print(e)
+        warnings.warn(str(e) + f"\nCreating new history file: {ai_history_path}")
         ai_history = []
     return human_history, ai_history
 
