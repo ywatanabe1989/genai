@@ -43,3 +43,7 @@ python3.11 -m venv env-3.11 && source env-3.11/bin/activate && pip install -U pi
 
 ## Templates
 Templates can be managed under the ['./templates'](./templates) directory (default: $HOME/.emacs.d/lisp/emacs-genai/templates/*.md). Uppercase letters in the template file name are used as shortcut keys for selection. Your input to GenAI (selected region) is inserted into the "PLACEHOLDER" of the template.
+
+## TODO
+
+- ediff-regions

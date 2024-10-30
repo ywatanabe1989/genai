@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Time-stamp: "2024-10-30 11:03:34 (ywatanabe)"
+# File: genai/genai.py
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-07-08 19:38:27 (ywatanabe)"
+# Time-stamp: "2024-10-27 12:25:36 (ywatanabe)"
 # genai.py
 
 """
@@ -8,14 +12,15 @@ This script calls GenAI API
 """
 
 import argparse
-import os
 import warnings
 
 from mngs.ai import GenAI as mngs_ai_GenAI
-from mngs.gen import natglob as mngs_gen_natglob
+from mngs.io import glob as mngs_io_glob
 from mngs.io import load as mngs_io_load
 from mngs.io import save as mngs_io_save
 from mngs.path import split as mngs_path_split
+
+# __file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
 
 
 ## Functions
@@ -23,20 +28,20 @@ def load_histories(human_history_path, ai_history_path):
     try:
         human_history = mngs_io_load(human_history_path)
     except Exception as e:
-        print(e)
+        warnings.warn(str(e) + f"\nCreating new history file: {human_history_path}")
         human_history = []
 
     try:
         ai_history = mngs_io_load(ai_history_path)
     except Exception as e:
-        print(e)
+        warnings.warn(str(e) + f"\nCreating new history file: {ai_history_path}")
         ai_history = []
     return human_history, ai_history
 
 
 def load_templates():
     TEMPLATE_DIR = mngs_path_split(__file__)[0] + "./templates/"
-    TEMPLATE_PATHS = mngs_gen_natglob(TEMPLATE_DIR.replace("/./", "/") + "*")
+    TEMPLATE_PATHS = mngs_io_glob(TEMPLATE_DIR.replace("/./", "/") + "*")
 
     TEMPLATE_NAMES = [
         "".join(mngs_path_split(tp)[1:]) for tp in TEMPLATE_PATHS
@@ -79,7 +84,7 @@ def determine_template(template_type):
 
 
 def run_genai(
-    api_key,
+    api_keys,
     engine,
     max_tokens,
     temperature,
@@ -89,7 +94,7 @@ def run_genai(
     prompt,
 ):
 
-    GENERAL_INSTRUCTION = "## General Instruction\n\nI am busy, so please avoid unnecessary messages. Keep your output minimal. When programming code is provided, please concentrate on differences between my input and your output; always be concise and stick to the point.\n\n"
+    GENERAL_INSTRUCTION = "## General Instruction\n\nI am busy, so please avoid unnecessary messages. Keep your output minimal. When programming code is provided, please concentrate on differences between my input and your output; always be concise and stick to the point.\n\nHowever, do not skip any lines of code as I will use your output as they are. Even when your code is long, do not care about it. I will prompt you continue in those cases."
 
     # Handle histories
     ai_history_path = human_history_path.replace("human", "ai")
@@ -98,7 +103,14 @@ def run_genai(
     )
 
     # Model initialization
-    model = mngs_ai_GenAI(model=engine, stream=True, n_keep=n_history)
+    model = mngs_ai_GenAI(
+        model=engine,
+        api_key=api_keys,
+        stream=True,
+        n_keep=n_history,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
     [model.update_history(**_history) for _history in ai_history[-n_history:]]
 
     # AI prompt = template + prompt
@@ -113,22 +125,7 @@ def run_genai(
         model_out = "Please input prompt"
         print(model_out + "\n")
     else:
-        try:
-            model_out = model(
-                ai_prompt
-            )  # Print AI output in a streaming manner
-        except Exception as e:
-            print(e)
-            model.reset()
-            warnings.warn(
-                "\nThere was something wrong with the chat history handling. "
-                "Feeding only the last user input."
-            )
-            model.update_history(role="user", content=ai_prompt)
-            model_out = model(
-                ai_prompt
-            )  # Print AI output in a streaming manner
-        print("\n")
+        model_out = model(ai_prompt)  # Print AI output in a streaming manner
 
     # Update chat histories
     update_human_history(
@@ -142,9 +139,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--api_key",
         type=str,
-        default=os.getenv("GENAI_API_KEY"),
+        action="append",  # Allow multiple API keys
         help="(default: %(default)s)",
     )
+
+    # parser.add_argument(
+    #     "--api_key",
+    #     type=str,
+    #     default=os.getenv("GENAI_API_KEY"),
+    #     help="(default: %(default)s)",
+    # )
 
     parser.add_argument(
         "--engine",
@@ -206,7 +210,7 @@ if __name__ == "__main__":
     # mngs.gen.print_block(args, c="yellow")
 
     run_genai(
-        api_key=args.api_key,
+        api_keys=args.api_key,
         engine=args.engine,
         max_tokens=args.max_tokens,
         temperature=args.temperature,
@@ -216,4 +220,6 @@ if __name__ == "__main__":
         prompt=args.prompt,
     )
 
-# # EOF
+# 
+
+# EOF
