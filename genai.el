@@ -1,8 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-10-29 21:17:42 (ywatanabe)>
-;;; File: genai.el
-
+;;; Time-stamp: <2024-10-30 11:12:01 (ywatanabe)>
+;;; File: genai/genai.el
 ;; Copyright (C) 2024 Yusuke Watanabe
 
 ;; Author: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
@@ -266,19 +265,31 @@ BUFFER can be a buffer object or a buffer name."
 ;;             'string>))))
 
 
-;; if starting with capitale-letter (like Program.md), reterun "(p) Program"
-;; elif not starting with capitale-letter and capital letter is included (like parapHrase.md), reterun "(h) h parapHrase"
-(cl-defun genai--fetch-templates (dir)
-  "Return list of templates file names that contain capital letters."
-  (when (file-exists-p dir)
-    (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
-      (sort (mapcar (lambda (f) 
-                      (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
-                        (if (string= f "parapHrase.md")
-                            (format "h (%s)" name-without-ext)
-                          name-without-ext)))
-                    files) 
-            'string>))))
+;; ;; if starting with capitale-letter (like Program.md), reterun "(p) Program"
+;; ;; elif not starting with capitale-letter and capital letter is included (like parapHrase.md), reterun "(h) h parapHrase"
+;; (cl-defun genai--fetch-templates (dir)
+;;   "Return list of templates file names that contain capital letters."
+;;   (when (file-exists-p dir)
+;;     (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
+;;       (sort (mapcar (lambda (f) 
+;;                       (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
+;;                         (if (string= f "parapHrase.md")
+;;                             (format "h (%s)" name-without-ext)
+;;                           name-without-ext)))
+;;                     files) 
+;;             'string>))))
+
+(cl-defun --genai-find-first-capital (string)
+  "Find first capital letter in STRING and return cons of (letter . position).
+Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"  
+  (interactive)
+  (let* ((name (file-name-sans-extension string))
+         (case-fold-search nil)
+         (capital-pos (string-match "[A-Z]" name)))
+    (when capital-pos
+      (cons (downcase (substring name capital-pos (1+ capital-pos)))
+            capital-pos))))
+;; (--genai-find-first-capital "parapHrase.md") ; => (h . 5)
 
 (cl-defun genai--fetch-templates (dir)
   "Return list of formatted template names from DIR that contain capital letters.
@@ -301,18 +312,6 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                     files)
             'string>))))
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
-
-(defun --genai-find-first-capital (string)
-  "Find first capital letter in STRING and return cons of (letter . position).
-Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"  
-  (interactive)
-  (let* ((name (file-name-sans-extension string))
-         (case-fold-search nil)
-         (capital-pos (string-match "[A-Z]" name)))
-    (when capital-pos
-      (cons (downcase (substring name capital-pos (1+ capital-pos)))
-            capital-pos))))
-;; (--genai-find-first-capital "parapHrase.md") ; => (h . 5)
 
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates."
@@ -446,69 +445,38 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
     command))
 
-;;;###autoload
-;; (defun genai-show-history (&optional num-interactions)
-;;   "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
-;;   (interactive "sEnter the number of latest interactions: ")
-;;   (let* ((buffer (get-buffer-create "*GenAI All History*"))
-;;          (temp-file (make-temp-file "genai-history-" nil ".json"))
-;;          (num-interactions (string-to-number (or num-interactions "1000000")))
-;;          (grep-command (format "tac %s | grep -m %d -e '},' -e ']' | tac > %s"
-;;                                genai-history-human-path
-;;                                (* 2 num-interactions)
-;;                                temp-file)))
-;;     (call-process-shell-command grep-command nil nil nil)
-;;     (with-current-buffer buffer
-;;       (erase-buffer))
-;;     (let ((command-list (list genai-python-bin-path
-;;                               genai-python-script-path-show-history
-;;                               "--human_history_path" temp-file
-;;                               "--output" (concat temp-file ".md"))))
-;;       (make-process
-;;        :name "genai-show-history"
-;;        :buffer buffer
-;;        :command command-list
-;;        :sentinel (lambda (process event)
-;;                    (when (string= event "finished\n")
-;;                      (with-current-buffer (process-buffer process)
-;;                        (insert-file-contents (concat temp-file ".md"))
-;;                        (delete-file temp-file)
-;;                        (delete-file (concat temp-file ".md"))
-;;                        (goto-char (point-min))
-;;                        (genai--scroll-history)
-;;                        (markdown-mode)
-;;                        (display-buffer (current-buffer)))))))
-;;     (message "Loading history to *GenAI All History* buffer...")))
 
 ;;;###autoload
-
 (defun genai-show-history (&optional num-interactions)
   "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
-  (interactive "nNumber of Interactions: ")
-  (let* ((buffer (get-buffer-create "*GenAI All History*"))
-         (temp-file "/tmp/genai-history.json")
-         (num-interactions (or num-interactions 3))
-         (command-list (list genai-python-bin-path
-                             genai-python-script-path-show-history
-                             "--human_history_path" genai-history-human-path
-                             "--output" (concat temp-file ".md")
-                             "--n_interactions" (number-to-string num-interactions))))
-    (with-current-buffer buffer
+  (interactive "sEnter the number of latest interactions: ")
+  (let* ((genai-all-history-buffer (get-buffer-create "*GenAI All History*"))
+         ;; (num-interactions (string-to-number (or num-interactions "1024")))
+         (num-interactions (or num-interactions 1024))
+         )
+    (with-current-buffer genai-all-history-buffer
       (erase-buffer))
-    (make-process
-     :name "genai-show-history"
-     :buffer buffer
-     :command command-list
-     :sentinel (lambda (process event)
-                 (when (string= event "finished\n")
-                   (with-current-buffer (process-buffer process)
-                     (insert-file-contents (concat temp-file ".md"))
-                     (delete-file (concat temp-file ".md"))
-                     (goto-char (point-min))
-                     (genai--scroll-history)
-                     (markdown-mode)
-                     (display-buffer (current-buffer) '((display-buffer-in-side-window) (side . right) (window-width . 0.5)))))))
-    (message "Loading history to *GenAI All History*...")))
+
+    (display-buffer genai-all-history-buffer)
+    
+    (let ((command-list (list genai-python-bin-path
+                              genai-python-script-path-show-history
+                              "--human_history_path" genai-history-human-path
+                              "--n_interactions" (number-to-string num-interactions)
+                              )))
+      (make-process
+       :name "genai-show-history"
+       :buffer genai-all-history-buffer
+       :command command-list
+       :sentinel (lambda (process event)
+                   (when (string= event "finished\n")
+                     (with-current-buffer genai-all-history-buffer
+                       (goto-char (point-min))
+                       (genai--scroll-history)
+                       (markdown-mode)
+                       )))))
+    (message "Loading history to *GenAI All History* buffer...")))
+;; (genai-show-history 3)
 
 ;;;###autoload
 (defun genai-reset-history ()

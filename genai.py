@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Time-stamp: "2024-10-30 11:03:34 (ywatanabe)"
+# File: genai/genai.py
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
 # Time-stamp: "2024-10-27 12:25:36 (ywatanabe)"
@@ -122,22 +126,6 @@ def run_genai(
         print(model_out + "\n")
     else:
         model_out = model(ai_prompt)  # Print AI output in a streaming manner
-        # try:
-        #     model_out = model(
-        #         ai_prompt
-        #     )  # Print AI output in a streaming manner
-        # except Exception as e:
-        #     print(e)
-        #     model.reset()
-        #     warnings.warn(
-        #         "\nThere was something wrong with the chat history handling. "
-        #         "Feeding only the last user input."
-        #     )
-        #     model.update_history(role="user", content=ai_prompt)
-        #     model_out = model(
-        #         ai_prompt
-        #     )  # Print AI output in a streaming manner
-        # print("\n")
 
     # Update chat histories
     update_human_history(
@@ -232,4 +220,6 @@ if __name__ == "__main__":
         prompt=args.prompt,
     )
 
-# # EOF
+# 
+
+# EOF
