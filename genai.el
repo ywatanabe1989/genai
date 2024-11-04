@@ -1,7 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-10-30 11:12:01 (ywatanabe)>
-;;; File: genai/genai.el
+;;; Time-stamp: <2024-10-31 22:14:14 (ywatanabe)>
+;;; File: ./genai/genai.el
 ;; Copyright (C) 2024 Yusuke Watanabe
 
 ;; Author: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
@@ -445,25 +445,59 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
     command))
 
+;; ;;;###autoload
+;; (defun genai-show-history (&optional num-interactions)
+;;   "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
+;;   (interactive "sEnter the number of latest interactions: ")
+;;   (let* ((genai-all-history-buffer (get-buffer-create "*GenAI All History*"))
+;;          ;; (num-interactions (string-to-number (or num-interactions "1024")))
+;;          if number , okay but if string, string-to-number num_interactions
+;;          (num-interactions (or num-interactions 1024))
+;;          )
+;;     (with-current-buffer genai-all-history-buffer
+;;       (erase-buffer))
+
+;;     (display-buffer genai-all-history-buffer)
+    
+;;     (let ((command-list (list genai-python-bin-path
+;;                               genai-python-script-path-show-history
+;;                               "--human_history_path" genai-history-human-path
+;;                               "--n_interactions" (number-to-string num-interactions)
+;;                               )))
+;;       (make-process
+;;        :name "genai-show-history"
+;;        :buffer genai-all-history-buffer
+;;        :command command-list
+;;        :sentinel (lambda (process event)
+;;                    (when (string= event "finished\n")
+;;                      (with-current-buffer genai-all-history-buffer
+;;                        (goto-char (point-min))
+;;                        (genai--scroll-history)
+;;                        (markdown-mode)
+;;                        )))))
+;;     (message "Loading history to *GenAI All History* buffer...")))
 
 ;;;###autoload
 (defun genai-show-history (&optional num-interactions)
   "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
-  (interactive "sEnter the number of latest interactions: ")
+  (interactive "sEnter the number of latest interactions (default: 1024): ")
   (let* ((genai-all-history-buffer (get-buffer-create "*GenAI All History*"))
-         ;; (num-interactions (string-to-number (or num-interactions "1024")))
-         (num-interactions (or num-interactions 1024))
-         )
+         (num-interactions (cond
+                          ((null num-interactions) 1024)
+                          ((numberp num-interactions) (number-to-string num-interactions))
+                          ((stringp num-interactions) (if (string-empty-p num-interactions)
+                                                        "1024"
+                                                        num-interactions))
+                          (t "1024"))))
     (with-current-buffer genai-all-history-buffer
       (erase-buffer))
-
+    
     (display-buffer genai-all-history-buffer)
     
     (let ((command-list (list genai-python-bin-path
-                              genai-python-script-path-show-history
-                              "--human_history_path" genai-history-human-path
-                              "--n_interactions" (number-to-string num-interactions)
-                              )))
+                             genai-python-script-path-show-history
+                             "--human_history_path" genai-history-human-path
+                             "--n_interactions" num-interactions)))
       (make-process
        :name "genai-show-history"
        :buffer genai-all-history-buffer
@@ -473,10 +507,8 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                      (with-current-buffer genai-all-history-buffer
                        (goto-char (point-min))
                        (genai--scroll-history)
-                       (markdown-mode)
-                       )))))
+                       (markdown-mode))))))
     (message "Loading history to *GenAI All History* buffer...")))
-;; (genai-show-history 3)
 
 ;;;###autoload
 (defun genai-reset-history ()
