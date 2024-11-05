@@ -1,7 +1,9 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-10-31 22:14:14 (ywatanabe)>
+;;; Time-stamp: <2024-11-05 21:30:34 (ywatanabe)>
 ;;; File: ./genai/genai.el
+
+
 ;; Copyright (C) 2024 Yusuke Watanabe
 
 ;; Author: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
@@ -240,48 +242,9 @@ BUFFER can be a buffer object or a buffer name."
        (message "Error creating buffer file: %s" (error-message-string err))
        nil))))
 
-;; (cl-defun genai--fetch-templates (dir)
-;;   "Return list of templates file names that contain capital letters."
-;;   (when (file-exists-p dir)
-;;     (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
-;;       (sort (mapcar (lambda (f) 
-;;                       (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
-;;                         (if (string= f "parapHrase.md")
-;;                             (format "h (%s)" name-without-ext)
-;;                           name-without-ext)))
-;;                     files) 
-;;             'string>))))
-
-;; (cl-defun genai--fetch-templates (dir)
-;;   "Return list of templates file names that contain capital letters."
-;;   (when (file-exists-p dir)
-;;     (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
-;;       (sort (mapcar (lambda (f) 
-;;                       (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
-;;                         (if (string= f "parapHrase.md")
-;;                             (format "h (%s)" name-without-ext)
-;;                           name-without-ext)))
-;;                     files) 
-;;             'string>))))
-
-
-;; ;; if starting with capitale-letter (like Program.md), reterun "(p) Program"
-;; ;; elif not starting with capitale-letter and capital letter is included (like parapHrase.md), reterun "(h) h parapHrase"
-;; (cl-defun genai--fetch-templates (dir)
-;;   "Return list of templates file names that contain capital letters."
-;;   (when (file-exists-p dir)
-;;     (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
-;;       (sort (mapcar (lambda (f) 
-;;                       (let ((name-without-ext (substring f 0 (string-match "\\.md" f))))
-;;                         (if (string= f "parapHrase.md")
-;;                             (format "h (%s)" name-without-ext)
-;;                           name-without-ext)))
-;;                     files) 
-;;             'string>))))
-
 (cl-defun --genai-find-first-capital (string)
   "Find first capital letter in STRING and return cons of (letter . position).
-Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"  
+Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
   (interactive)
   (let* ((name (file-name-sans-extension string))
          (case-fold-search nil)
@@ -303,8 +266,8 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                              (capital-info (--genai-find-first-capital f))
                              (first-capital (car capital-info))
                              (capital-pos (cdr capital-info)))
-                        (cond 
-                         ((= capital-pos 0) 
+                        (cond
+                         ((= capital-pos 0)
                           (format "%s" name-without-ext))
                          (capital-pos
                           (format "%s %s" first-capital name-without-ext))
@@ -402,7 +365,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   ;; Check if the API keys string is not empty
   (unless (string-empty-p genai-api-keys)
     (let ((keys-list (split-string genai-api-keys ":")))
-      (setq genai-api-keys-parsed keys-list)  ;; Set the variable to the list of extracted API keys
+      (setq genai-api-keys-parsed keys-list)
       ;; (message "Parsed API Keys: %S" genai-api-keys-parsed)
       )))
 
@@ -414,7 +377,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
   (let* ((template-type (genai--select-template))
          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
-                         "''" ; Empty string between apostrophes
+                         "''"
                        (genai--safe-shell-quote-argument prompt)))
 
          (command (format "%s \
@@ -458,7 +421,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 ;;       (erase-buffer))
 
 ;;     (display-buffer genai-all-history-buffer)
-    
+
 ;;     (let ((command-list (list genai-python-bin-path
 ;;                               genai-python-script-path-show-history
 ;;                               "--human_history_path" genai-history-human-path
@@ -491,9 +454,9 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                           (t "1024"))))
     (with-current-buffer genai-all-history-buffer
       (erase-buffer))
-    
+
     (display-buffer genai-all-history-buffer)
-    
+
     (let ((command-list (list genai-python-bin-path
                              genai-python-script-path-show-history
                              "--human_history_path" genai-history-human-path
@@ -518,23 +481,23 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
          (timestamp (format-time-string "%Y-%m-%d-%H-%M-%S"))
          (human-backup (concat backup-dir "/history-human-" timestamp ".json"))
          (ai-backup (concat backup-dir "/history-ai-" timestamp ".json")))
-    
+
     ;; Create backup directory if it doesn't exist
     (unless (file-exists-p backup-dir)
       (make-directory backup-dir t))
-    
+
     ;; Backup existing history files
     (when (file-exists-p genai-history-human-path)
       (rename-file genai-history-human-path human-backup))
     (when (file-exists-p genai-history-ai-path)
       (rename-file genai-history-ai-path ai-backup))
-    
+
     ;; Create new empty history files
     (with-temp-file genai-history-human-path
       (insert "[]"))
     (with-temp-file genai-history-ai-path
       (insert "[]"))
-    
+
     (message "GenAI history has been reset. Backups created in %s" backup-dir)))
 
 (defun genai--process-sentinel (_process msg)
@@ -626,14 +589,14 @@ Handles different process states and calls cleanup when appropriate."
 ;;     (switch-to-buffer-other-window "*GenAI*")
 ;;     (keyboard-quit)
 ;;     (message "Jump to the \"*GenAI*\" buffer"))
-   
+
 ;;    ((equal prompt "r")
 ;;     (with-current-buffer (get-buffer-create "*GenAI*")
 ;;       (goto-char (point-max))
 ;;       (font-lock-ensure)
 ;;       (message "GenAI: Running in background...")
 ;;       (genai--start-python-process prompt)))
-   
+
 ;;    (t
 ;;     (with-current-buffer (get-buffer-create "*GenAI*")
 ;;       (goto-char (point-max))
@@ -653,7 +616,7 @@ Handles different process states and calls cleanup when appropriate."
 ;;     (switch-to-buffer-other-window "*GenAI*")
 ;;     (keyboard-quit)
 ;;     (message "Jump to the \"*GenAI*\" buffer"))
-   
+
 ;;    ((equal prompt "r")
 ;;     (let ((inhibit-message t))
 ;;       (with-current-buffer (get-buffer-create "*GenAI*")
@@ -662,7 +625,7 @@ Handles different process states and calls cleanup when appropriate."
 ;;         (message prompt)
 ;;         (genai--start-python-process prompt)))
 ;;     (message "GenAI: Running in background..."))
-   
+
 ;;    (t
 ;;     (with-current-buffer (get-buffer-create "*GenAI*")
 ;;       (goto-char (point-max))
@@ -679,7 +642,7 @@ If a region is selected, use that text as the prompt.
 Otherwise, prompt the user to enter a prompt.
 The response will be displayed in the *GenAI* buffer."
   (interactive)
-  (genai--init)  ; Ensure initialization at first use.
+  (genai--init)
   (genai--ensure-dependencies)
   (let* ((region-text (if (use-region-p)
                           (buffer-substring-no-properties (region-beginning) (region-end))
@@ -694,7 +657,7 @@ The response will be displayed in the *GenAI* buffer."
     ;; Here, disable text selection (region) if exist
     (when (use-region-p)
       (deactivate-mark))
-    
+
     ;; Run the Gen AI
     (genai--run region-text)
 

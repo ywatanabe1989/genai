@@ -1,7 +1,7 @@
 <!-- ---
 !-- title: SciWrite-2-introduction.md
 !-- author: ywatanabe
-!-- date: 2024-11-04 13:20:25
+!-- date: 2024-11-04 14:32:41
 !-- --- -->
 
 
@@ -31,7 +31,7 @@ The aim of introduction is to offer readers with the background necessary to und
   - Ensure to write at least 1000 words
 
 - Misc.
-  - Explicitly indicate species
+  - Explicitly indicate species with sample sizes
   - Add relevant references when applicable
   - Keep existing references as they are
   - Maintain quantitative measurements as they are written.
@@ -104,7 +104,7 @@ XXXXX STARTS/ENDS
 -----------------
 However, these tags are just for better communication with you. So, please do not include similar tags in your output.
 
-Now, my draft is as follows. Please output only your revised introduction, without including any comments.
+Now, my draft is as follows. Please output only your revised introduction, without including any comments. Also, please return as a code block (``` tex\nYOUR REVISED ABSTRACT```).
 
 -----------------
 MY DRAFT STARTS

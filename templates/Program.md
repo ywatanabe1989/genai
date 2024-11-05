@@ -1,8 +1,10 @@
 <!-- ---
-!-- title: Program
+!-- title: ./genai/templates/Program.md
 !-- author: ywatanabe
-!-- date: 2024-11-02 19:08:55
+!-- date: 2024-11-05 01:09:37
 !-- --- -->
+
+
 ----------
 Background
 ----------
@@ -45,6 +47,8 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 ################################################################################
 # For Python Code
 ################################################################################
+- Do not use try-except blocks as much as possible. This is because I often struggle with invisible errors for debugging.
+
 - Do not change the header of python files:
   ``` python
   #!/usr/bin/env python3

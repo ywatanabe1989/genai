@@ -1,7 +1,7 @@
 <!-- ---
 !-- title: SciWrite-4-discussion.md
 !-- author: ywatanabe
-!-- date: 2024-11-04 13:24:57
+!-- date: 2024-11-04 14:34:21
 !-- --- -->
 
 
@@ -83,9 +83,21 @@ XXXXX STARTS/ENDS
 -----------------
 However, these tags are just for better communication with you. So, please do not include similar tags in your output.
 
-Now, my draft is as follows. Please output only your revised introduction, without including any comments. Remember to insert the following section START and END tags in the same manner as the above example:
-[START of 1. Summarizing Key Findings], [END of 2. Summarizing Key Findings], [START of 2. Comparison with Previous Evidence], [END of 2. Comparison with Previous Evidence], [START of 3. Supporting Your Findings], [END of 3. Supporting Your Findings], [START of 4. Limitations], [END of 4. Limitations], [START of 5. Implications], and [END of 5. Implications]. By the way, you just return the revised contents and never include any instructions like----------------SOMETHING STARTS/ENDS----------------.
+Please output only your revised introduction, without including any comments. 
 
+Remember to insert the following section START and END tags in the same manner as the above example:
+- [START of 1. Summarizing Key Findings] 
+- [END of 2. Summarizing Key Findings] 
+- [START of 2. Comparison with Previous Evidence] 
+- [END of 2. Comparison with Previous Evidence] 
+- [START of 3. Supporting Your Findings] 
+- [END of 3. Supporting Your Findings] 
+- [START of 4. Limitations] 
+- [END of 4. Limitations] 
+- [START of 5. Implications]
+- [END of 5. Implications]
+
+Now, my draft is as follows.  Also, please return as a code block (``` tex\nYOUR REVISED ABSTRACT```). 
 -----------------
 MY DRAFT STARTS
 -----------------

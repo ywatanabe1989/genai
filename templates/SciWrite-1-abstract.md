@@ -1,7 +1,7 @@
 <!-- ---
 !-- title: SciWrite-1-abstract.md
 !-- author: ywatanabe
-!-- date: 2024-11-04 13:18:07
+!-- date: 2024-11-04 14:32:38
 !-- --- -->
 
 
@@ -21,11 +21,13 @@ The aim of abstract is to provide clear, concise, and accessible summary to a br
 - Please follow the format of the template I will provide below in this message.
 - Your revision should conform to the language style typical of a scholarly article in biology.
 - Maintain quantitative measurements as they are written.
+- Explicitly indicate species with sample sizes
 - Abstract should be coherent and cohesive sentences using transitional words, without any new lines
 - Tences rules are as follows:
   - Use present tense while stating general facts (which are supported by more than three privious works).
   - Use past tense when writing about one specific prior research.
   - Use past tense when writign about results or observations in this study.
+
 
 ------------------
 TEMPLATE STARTS
@@ -70,7 +72,7 @@ XXXXX STARTS/ENDS
 -----------------
 However, these tags are just for better communication with you. So, please do not include similar tags in your output.
 
-Now, my draft is as follows. Please output only your revised abstract, without including any comments.
+Now, my draft is as follows. Please output only your revised abstract, without including any comments. Also, please return as a code block (``` tex\nYOUR REVISED ABSTRACT```).
 -----------------
 MY DRAFT STARTS
 -----------------
