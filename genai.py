@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-10-30 11:03:34 (ywatanabe)"
-# File: genai/genai.py
+# Time-stamp: "2024-11-11 18:53:12 (ywatanabe)"
+# File: ./genai/genai.py
+
 #!./env/bin/python3
 # -*- coding: utf-8 -*-
 # Time-stamp: "2024-10-27 12:25:36 (ywatanabe)"
@@ -117,6 +118,8 @@ def run_genai(
     template = determine_template(template_type)
     ai_prompt = template.replace("PLACEHOLDER", prompt)
 
+    # print(template)
+
     # Adds the general instruction
     ai_prompt = GENERAL_INSTRUCTION + ai_prompt
 
@@ -220,6 +223,6 @@ if __name__ == "__main__":
         prompt=args.prompt,
     )
 
-# 
+#
 
 # EOF

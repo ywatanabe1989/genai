@@ -1,7 +1,7 @@
 <!-- ---
 !-- title: ./genai/templates/Program.md
 !-- author: ywatanabe
-!-- date: 2024-11-05 01:09:37
+!-- date: 2024-11-10 10:21:52
 !-- --- -->
 
 
@@ -48,6 +48,8 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 # For Python Code
 ################################################################################
 - Do not use try-except blocks as much as possible. This is because I often struggle with invisible errors for debugging.
+
+- Ensure indent level matches with my input; I will insert your output into my code as is.
 
 - Do not change the header of python files:
   ``` python
@@ -230,9 +232,11 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 # For Shell script
 ################################################################################
 - Include one-line explanation for function, followed by example usage at the first lines of a function.
+- Please ensure if-fi syntaxes are correct.
 - A complete shell script should include the following components:
   - argument parser and usage (with -h|--help option)
   - logging functionality
+
 
 - The template of shell script is as follows:
   ``` bash
@@ -241,7 +245,7 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
   # Author: ywatanabe (ywatanabe@alumni.u-tokyo.ac.jp)
   # Date: $(date +"%Y-%m-%d-%H-%M")
 
-  LOG_FILE="${0%.sh}.log"
+  LOG_FILE="$0.log"
 
   usage() {
       echo "Usage: $0 [-s|--subject <subject>] [-m|--message <message>] [-h|--help]"
@@ -276,6 +280,12 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 
   # EOF
   ```
+
+################################################################################
+# For Elisp Code
+################################################################################
+- Please ensure the number and locations of parentheses are correct.
+- Please ensure the number and locations of parentheses are correct.
 
 ----------
 Now, my input is as follows:
