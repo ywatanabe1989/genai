@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-14 18:08:53 (ywatanabe)>
+;;; Time-stamp: <2024-11-14 20:05:09 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -331,12 +331,118 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
             'string>))))
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
 
-(cl-defun genai--create-shortcuts (templates)
-  "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
-  (let ((shortcuts (make-hash-table :test 'equal))
-        (counts (make-hash-table :test 'equal)))
+;; (cl-defun genai--create-shortcuts (templates)
+;;   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
+;;   (let ((shortcuts (make-hash-table :test 'equal))
+;;         (counts (make-hash-table :test 'equal)))
 
-    ;; First, apply predefined mappings
+;;     (message "Initial templates: %S" templates)
+
+;;     ;; First, apply predefined mappings
+;;     (when (boundp 'genai-template-mapping)
+;;       (message "Using predefined mappings: %S" genai-template-mapping)
+;;       (dolist (mapping genai-template-mapping)
+;;         (let* ((key (car mapping))
+;;                (template-name (cdr mapping)))
+;;           (message "Processing mapping: %s -> %s" key template-name)
+;;           (when-let ((template (cl-find template-name templates
+;;                                       :key #'car
+;;                                       :test #'string=)))
+;;             (puthash key (car template) shortcuts)
+;;             (puthash (substring key 0 1) 1 counts)))))
+
+;;     ;; Then handle remaining templates
+;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
+;;     (message "Sorted templates: %S" templates)
+
+;;     (dolist (template templates)
+;;       (let* ((name (car template))
+;;              (suffix (cdr template))
+;;              (last-capital (if suffix
+;;                              (downcase suffix)
+;;                            (if (string-match "[A-Z]" name)
+;;                                (downcase (substring (match-string 0 name) 0 1))
+;;                              (downcase (substring name 0 1)))))
+;;              (count (gethash last-capital counts 0))
+;;              (new-key (if (= count 0)
+;;                          last-capital
+;;                        (format "%s%d" last-capital count))))
+
+;;         (message "Processing template: %s (capital: %s, count: %d, key: %s)"
+;;                 name last-capital count new-key)
+
+;;         (unless (gethash new-key shortcuts)
+;;           (puthash new-key name shortcuts)
+;;           (puthash last-capital (1+ count) counts))))
+
+;;     (message "Final shortcuts: %S" shortcuts)
+;;     shortcuts))
+
+;; ;; working but completion is split into shortcuts and tempalte name separately
+;; (cl-defun genai--create-shortcuts (templates)
+;;   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
+;;   (let ((shortcuts (make-hash-table :test 'equal))
+;;         (counts (make-hash-table :test 'equal))
+;;         (completion-alist nil))
+
+;;     (message "Initial templates: %S" templates)
+
+;;     ;; First, apply predefined mappings
+;;     (when (boundp 'genai-template-mapping)
+;;       (message "Using predefined mappings: %S" genai-template-mapping)
+;;       (dolist (mapping genai-template-mapping)
+;;         (let* ((key (car mapping))
+;;                (template-name (cdr mapping)))
+;;           (message "Processing mapping: %s -> %s" key template-name)
+;;           (when-let ((template (cl-find template-name templates
+;;                                       :key #'car
+;;                                       :test #'string=)))
+;;             (puthash key (car template) shortcuts)
+;;             (push (cons key (car template)) completion-alist)
+;;             (puthash (substring key 0 1) 1 counts)))))
+
+;;     ;; Then handle remaining templates
+;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
+;;     (message "Sorted templates: %S" templates)
+
+;;     (dolist (template templates)
+;;       (let* ((name (car template))
+;;              (suffix (cdr template))
+;;              (last-capital (if suffix
+;;                              (downcase suffix)
+;;                            (if (string-match "[A-Z]" name)
+;;                                (downcase (substring (match-string 0 name) 0 1))
+;;                              (downcase (substring name 0 1)))))
+;;              (count (gethash last-capital counts 0))
+;;              (new-key (if (= count 0)
+;;                          last-capital
+;;                        (format "%s%d" last-capital count))))
+
+;;         (message "Processing template: %s (capital: %s, count: %d, key: %s)"
+;;                 name last-capital count new-key)
+
+;;         (unless (gethash new-key shortcuts)
+;;           (puthash new-key name shortcuts)
+;;           (push (cons new-key name) completion-alist)
+;;           (push (cons name name) completion-alist)
+;;           (puthash last-capital (1+ count) counts))))
+
+;;     (message "Final shortcuts: %S" shortcuts)
+;;     (set-default 'genai--completion-alist completion-alist)
+;;     (setq genai--completion-function
+;;           (lambda (string pred action)
+;;             (if (eq action 'metadata)
+;;                 '(metadata (category . genai))
+;;               (complete-with-action action genai--completion-alist string pred))))
+;;     shortcuts))
+
+(cl-defun genai--create-shortcuts (templates)
+  "Generate shortcuts for templates using numbers for duplicates."
+  (let ((shortcuts (make-hash-table :test 'equal))
+        (counts (make-hash-table :test 'equal))
+        (completion-alist nil))
+
+    ;; Apply predefined mappings first
     (when (boundp 'genai-template-mapping)
       (dolist (mapping genai-template-mapping)
         (let* ((key (car mapping))
@@ -345,22 +451,38 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                                       :key #'car
                                       :test #'string=)))
             (puthash key (car template) shortcuts)
+            ;; Add combined format for completion
+            (push (cons (format "(%s) %s" key (car template)) (car template)) completion-alist)
             (puthash (substring key 0 1) 1 counts)))))
 
-    ;; Then handle remaining templates
+    ;; Handle remaining templates
     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
+
     (dolist (template templates)
       (let* ((name (car template))
-             (base (downcase (substring name 0 1)))
-             (count (gethash base counts 0))
+             (suffix (cdr template))
+             (last-capital (if suffix
+                             (downcase suffix)
+                           (if (string-match "[A-Z]" name)
+                               (downcase (substring (match-string 0 name) 0 1))
+                             (downcase (substring name 0 1)))))
+             (count (gethash last-capital counts 0))
              (new-key (if (= count 0)
-                         base
-                       (format "%s%d" base count))))
+                         last-capital
+                       (format "%s%d" last-capital count))))
 
-        (unless (gethash new-key shortcuts)  ; Skip if already mapped
+        (unless (gethash new-key shortcuts)
           (puthash new-key name shortcuts)
-          (puthash base (1+ count) counts))))
+          ;; Add combined format for completion
+          (push (cons (format "(%s) %s" new-key name) name) completion-alist)
+          (puthash last-capital (1+ count) counts))))
 
+    (set-default 'genai--completion-alist completion-alist)
+    (setq genai--completion-function
+          (lambda (string pred action)
+            (if (eq action 'metadata)
+                '(metadata (category . genai))
+              (complete-with-action action genai--completion-alist string pred))))
     shortcuts))
 
 ;; (cl-defun genai--select-template ()
@@ -400,6 +522,85 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 
 ;;         template-type))))
 
+;; (cl-defun genai--select-template ()
+;;   "Prompt the user to select a template type for the GenAI model."
+;;   (interactive)
+;;   (unless (minibufferp)
+;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
+;;            (templates-with-shortcuts
+;;             (mapcar (lambda (template)
+;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
+;;                          (cons (match-string 2 template) (match-string 1 template))
+;;                        (cons template (downcase (substring template 0 1)))))
+;;                    capital-templates))
+;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
+;;            (prompt-parts nil)
+;;            (completion-list (list ""))) ;; Add empty string as default
+
+;;       ;; Build prompt
+;;       (maphash (lambda (key value)
+;;                  (push (format "(%s) %s" key value) prompt-parts)
+;;                  (push value completion-list))
+;;                shortcuts)
+
+;;       ;; Sort prompt-parts alphabetically by the template name
+;;       (setq prompt-parts (sort prompt-parts
+;;                               (lambda (a b)
+;;                                 (string< (cadr (split-string a ")" t))
+;;                                        (cadr (split-string b ")" t))))))
+
+;;       (let* ((prompt (concat "Select template or Enter additional message: \n"
+;;                             (mapconcat 'identity prompt-parts "  ")
+;;                             "\n"))
+;;              (input prompt)
+;;              ;; (_ (message prompt))
+;;              ;; (input (completing-read "Select Template or Type Manual Instruction: " completion-list nil nil ""))
+;;              (template-type (or (gethash input shortcuts)
+;;                               (if (string-blank-p input) "None" input))))
+
+;;         (unless (string= input "r")
+;;           (display-buffer (get-buffer-create "*GenAI*")))
+
+;;         template-type))))
+
+;; ;; working but no completion available
+;; (cl-defun genai--select-template ()
+;;   "Prompt the user to select a template type for the GenAI model."
+;;   (interactive)
+;;   (unless (minibufferp)
+;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
+;;            (templates-with-shortcuts
+;;             (mapcar (lambda (template)
+;;                      (if (string-match "^\\([a-z][0-9]?\\) \\(.+\\)$" template)
+;;                          (cons (match-string 2 template) (match-string 1 template))
+;;                        (cons template (downcase (substring template 0 1)))))
+;;                    capital-templates))
+;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
+;;            (prompt-parts nil)
+;;            (completion-list (list "")))
+
+;;       (maphash (lambda (key value)
+;;                  (push (format "(%s) %s" key value) prompt-parts)
+;;                  (push value completion-list))
+;;                shortcuts)
+
+;;       (setq prompt-parts (sort prompt-parts
+;;                               (lambda (a b)
+;;                                 (string< (downcase (cadr (split-string a ")" t)))
+;;                                        (downcase (cadr (split-string b ")" t)))))))
+
+;;       (let* ((prompt (concat "Select template or Enter additional message: \n"
+;;                             (mapconcat 'identity prompt-parts "  ")
+;;                             "\n"))
+;;              (input (read-string prompt))
+;;              (template-type (or (gethash input shortcuts)
+;;                               (if (string-blank-p input) "None" input))))
+
+;;         (unless (string= input "r")
+;;           (display-buffer (get-buffer-create "*GenAI*")))
+
+;;         template-type))))
+
 (cl-defun genai--select-template ()
   "Prompt the user to select a template type for the GenAI model."
   (interactive)
@@ -407,31 +608,27 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
            (templates-with-shortcuts
             (mapcar (lambda (template)
-                     (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
+                     (if (string-match "^\\([a-z][0-9]?\\) \\(.+\\)$" template)
                          (cons (match-string 2 template) (match-string 1 template))
                        (cons template (downcase (substring template 0 1)))))
                    capital-templates))
            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
-           (prompt-parts nil)
-           (completion-list (list ""))) ;; Add empty string as default
+           (prompt-parts nil))
 
-      ;; Build prompt
       (maphash (lambda (key value)
-                 (push (format "(%s) %s" key value) prompt-parts)
-                 (push value completion-list))
+                 (push (format "(%s) %s" key value) prompt-parts))
                shortcuts)
 
-      ;; Sort prompt-parts alphabetically by the template name
       (setq prompt-parts (sort prompt-parts
                               (lambda (a b)
-                                (string< (cadr (split-string a ")" t))
-                                       (cadr (split-string b ")" t))))))
+                                (string< (downcase (cadr (split-string a ")" t)))
+                                       (downcase (cadr (split-string b ")" t)))))))
 
-      (let* (;; (prompt (concat "Select template or Enter additional message: \n"
-             ;;                (mapconcat 'identity prompt-parts "  ")
-             ;;                "\n"))
-             ;; (_ (message prompt))
-             (input (completing-read "Select Template or Type Manual Instruction: " completion-list nil nil ""))
+      (let* ((prompt (concat "Select template or Enter additional message: \n"
+                            (mapconcat 'identity prompt-parts "  ")
+                            "\n"))
+             ;; Use completing-read instead of read-string
+             (input (completing-read "Template or Instruction (optional): " genai--completion-alist nil nil))
              (template-type (or (gethash input shortcuts)
                               (if (string-blank-p input) "None" input))))
 
