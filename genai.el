@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-14 18:01:04 (ywatanabe)>
+;;; Time-stamp: <2024-11-14 18:08:53 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -82,8 +82,8 @@
 ;;
 ;; Template Selection:
 ;; 1. Default: First uppercase letter of filename is used as shortcut
-;; 2. Custom: Define your own shortcuts in genai-readme-mapping:
-;;    (setq genai-readme-mapping
+;; 2. Custom: Define your own shortcuts in genai-template-mapping:
+;;    (setq genai-template-mapping
 ;;          '(("p" . "Program")                ; p -> Program.md
 ;;            ("e" . "Email")                  ; s -> SciWrite.md
 ;;            ("c" . "Correct")                ; c -> Correct.md
@@ -217,7 +217,7 @@
   "Marker for the input position in GenAI buffer.")
 
 
-(defvar genai-readme-mapping nil
+(defvar genai-template-mapping nil
   "Mapping between shortcuts and their corresponding readme files.
 Example: Template shortcuts can be customized as:
   '((\"p\" . \"Program\")              ; p -> Program.md
@@ -337,8 +337,8 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
         (counts (make-hash-table :test 'equal)))
 
     ;; First, apply predefined mappings
-    (when (boundp 'genai-readme-mapping)
-      (dolist (mapping genai-readme-mapping)
+    (when (boundp 'genai-template-mapping)
+      (dolist (mapping genai-template-mapping)
         (let* ((key (car mapping))
                (template-name (cdr mapping)))
           (when-let ((template (cl-find template-name templates
