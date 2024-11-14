@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-14 20:05:09 (ywatanabe)>
+;;; Time-stamp: <2024-11-14 22:58:11 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -308,6 +308,55 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
             capital-pos))))
 ;; (--genai-find-first-capital "parapHrase.md") ; => (h . 5)
 
+;; (cl-defun genai--fetch-templates (dir)
+;;   "Return list of formatted template names from DIR that contain capital letters.
+;; For template starting with capital (e.g., Program.md) returns just the name.
+;; For template with internal capital (e.g., parapHrase.md) returns 'h parapHrase'.
+;; Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\" \"Visa\" \"SciWrite\" \"Remember\" \"Program\" \"Email\" \"Correct\" \"Alternative\")"
+;;   (interactive)
+;;   (when (file-exists-p dir)
+;;     (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
+;;       (sort (mapcar (lambda (f)
+;;                       (let* ((name-without-ext (substring f 0 (string-match "\\.md" f)))
+;;                              (capital-info (--genai-find-first-capital f))
+;;                              (first-capital (car capital-info))
+;;                              (capital-pos (cdr capital-info)))
+;;                         (cond
+;;                          ((= capital-pos 0)
+;;                           (format "%s" name-without-ext))
+;;                          (capital-pos
+;;                           (format "%s %s" first-capital name-without-ext))
+;;                          (t nil))))
+;;                     files)
+;;             'string>))))
+
+
+
+;; (cl-defun genai--fetch-templates (dir)
+;;   "Return list of formatted template names from DIR that contain capital letters.
+;; For template starting with capital (e.g., Program.md) returns just the name.
+;; For template with internal capital (e.g., parapHrase.md) returns 'h parapHrase'.
+;; Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\" \"Visa\" \"SciWrite\" \"Remember\" \"Program\" \"Email\" \"Correct\" \"Alternative\")"
+;;   (interactive)
+;;   (when (file-exists-p dir)
+;;     (let ((files (sort (directory-files dir nil ".*[A-Z].*\\.md$")
+;;                       (lambda (a b)
+;;                         (if (/= (length a) (length b))
+;;                             (< (length a) (length b))
+;;                           (string< a b))))))
+;;       (mapcar (lambda (f)
+;;                 (let* ((name-without-ext (substring f 0 (string-match "\\.md" f)))
+;;                        (capital-info (--genai-find-first-capital f))
+;;                        (first-capital (car capital-info))
+;;                        (capital-pos (cdr capital-info)))
+;;                   (cond
+;;                    ((= capital-pos 0)
+;;                     (format "%s" name-without-ext))
+;;                    (capital-pos
+;;                     (format "%s %s" first-capital name-without-ext))
+;;                    (t nil))))
+;;               files))))
+
 (cl-defun genai--fetch-templates (dir)
   "Return list of formatted template names from DIR that contain capital letters.
 For template starting with capital (e.g., Program.md) returns just the name.
@@ -315,20 +364,21 @@ For template with internal capital (e.g., parapHrase.md) returns 'h parapHrase'.
 Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\" \"Visa\" \"SciWrite\" \"Remember\" \"Program\" \"Email\" \"Correct\" \"Alternative\")"
   (interactive)
   (when (file-exists-p dir)
-    (let ((files (directory-files dir nil ".*[A-Z].*\\.md$")))
-      (sort (mapcar (lambda (f)
-                      (let* ((name-without-ext (substring f 0 (string-match "\\.md" f)))
-                             (capital-info (--genai-find-first-capital f))
-                             (first-capital (car capital-info))
-                             (capital-pos (cdr capital-info)))
-                        (cond
-                         ((= capital-pos 0)
-                          (format "%s" name-without-ext))
-                         (capital-pos
-                          (format "%s %s" first-capital name-without-ext))
-                         (t nil))))
-                    files)
-            'string>))))
+    (sort
+     (delq nil
+           (mapcar (lambda (f)
+                    (let* ((name-without-ext (substring f 0 (string-match "\\.md" f)))
+                           (capital-info (--genai-find-first-capital f))
+                           (first-capital (car capital-info))
+                           (capital-pos (cdr capital-info)))
+                      (cond
+                       ((= capital-pos 0)
+                        (format "%s" name-without-ext))
+                       (capital-pos
+                        (format "%s %s" first-capital name-without-ext))
+                       (t nil))))
+                  (directory-files dir nil ".*[A-Z].*\\.md$")))
+     #'string<)))
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
 
 ;; (cl-defun genai--create-shortcuts (templates)
@@ -436,6 +486,8 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 ;;               (complete-with-action action genai--completion-alist string pred))))
 ;;     shortcuts))
 
+
+;; () formatting
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates using numbers for duplicates."
   (let ((shortcuts (make-hash-table :test 'equal))
@@ -452,7 +504,7 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                                       :test #'string=)))
             (puthash key (car template) shortcuts)
             ;; Add combined format for completion
-            (push (cons (format "(%s) %s" key (car template)) (car template)) completion-alist)
+            (push (cons (format "%s - %s" key (car template)) (car template)) completion-alist)
             (puthash (substring key 0 1) 1 counts)))))
 
     ;; Handle remaining templates
@@ -474,7 +526,7 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
         (unless (gethash new-key shortcuts)
           (puthash new-key name shortcuts)
           ;; Add combined format for completion
-          (push (cons (format "(%s) %s" new-key name) name) completion-alist)
+          (push (cons (format "%s - %s" new-key name) name) completion-alist)
           (puthash last-capital (1+ count) counts))))
 
     (set-default 'genai--completion-alist completion-alist)
@@ -522,46 +574,6 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 
 ;;         template-type))))
 
-;; (cl-defun genai--select-template ()
-;;   "Prompt the user to select a template type for the GenAI model."
-;;   (interactive)
-;;   (unless (minibufferp)
-;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
-;;            (templates-with-shortcuts
-;;             (mapcar (lambda (template)
-;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
-;;                          (cons (match-string 2 template) (match-string 1 template))
-;;                        (cons template (downcase (substring template 0 1)))))
-;;                    capital-templates))
-;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
-;;            (prompt-parts nil)
-;;            (completion-list (list ""))) ;; Add empty string as default
-
-;;       ;; Build prompt
-;;       (maphash (lambda (key value)
-;;                  (push (format "(%s) %s" key value) prompt-parts)
-;;                  (push value completion-list))
-;;                shortcuts)
-
-;;       ;; Sort prompt-parts alphabetically by the template name
-;;       (setq prompt-parts (sort prompt-parts
-;;                               (lambda (a b)
-;;                                 (string< (cadr (split-string a ")" t))
-;;                                        (cadr (split-string b ")" t))))))
-
-;;       (let* ((prompt (concat "Select template or Enter additional message: \n"
-;;                             (mapconcat 'identity prompt-parts "  ")
-;;                             "\n"))
-;;              (input prompt)
-;;              ;; (_ (message prompt))
-;;              ;; (input (completing-read "Select Template or Type Manual Instruction: " completion-list nil nil ""))
-;;              (template-type (or (gethash input shortcuts)
-;;                               (if (string-blank-p input) "None" input))))
-
-;;         (unless (string= input "r")
-;;           (display-buffer (get-buffer-create "*GenAI*")))
-
-;;         template-type))))
 
 ;; ;; working but no completion available
 ;; (cl-defun genai--select-template ()
@@ -612,23 +624,27 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                          (cons (match-string 2 template) (match-string 1 template))
                        (cons template (downcase (substring template 0 1)))))
                    capital-templates))
-           (shortcuts (genai--create-shortcuts templates-with-shortcuts))
+           (key-count (make-hash-table :test 'equal))
+           (shortcuts (make-hash-table :test 'equal))
            (prompt-parts nil))
 
-      (maphash (lambda (key value)
-                 (push (format "(%s) %s" key value) prompt-parts))
-               shortcuts)
+      (dolist (pair templates-with-shortcuts)
+        (let* ((value (car pair))
+               (key (cdr pair))
+               (count (gethash key key-count 0))
+               (numbered-key (if (> count 0)
+                               (format "%s%d" key (1+ count))
+                             key)))
+          (puthash key (1+ count) key-count)
+          (puthash numbered-key value shortcuts)
+          (push (format "(%s) %s" numbered-key value) prompt-parts)))
 
-      (setq prompt-parts (sort prompt-parts
-                              (lambda (a b)
-                                (string< (downcase (cadr (split-string a ")" t)))
-                                       (downcase (cadr (split-string b ")" t)))))))
+      (setq prompt-parts (sort prompt-parts 'string<))
 
-      (let* ((prompt (concat "Select template or Enter additional message: \n"
-                            (mapconcat 'identity prompt-parts "  ")
+      (let* ((prompt (concat "Template or Manual Instruction:\n"
+      (mapconcat 'identity prompt-parts " ")
                             "\n"))
-             ;; Use completing-read instead of read-string
-             (input (completing-read "Template or Instruction (optional): " genai--completion-alist nil nil))
+             (input (read-string prompt))
              (template-type (or (gethash input shortcuts)
                               (if (string-blank-p input) "None" input))))
 
