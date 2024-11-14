@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-14 09:54:54 (ywatanabe)>
+;;; Time-stamp: <2024-11-14 17:17:50 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -207,21 +207,13 @@
 (defvar-local genai-input-marker nil
   "Marker for the input position in GenAI buffer.")
 
-
-
-;; (defun genai-send-buffer-input ()
-;;   "Send text from the last separator as input to GenAI."
-;;   (interactive)
-;;   (with-current-buffer "*GenAI*"
-;;     (let ((input-text (save-excursion
-;;                        (goto-char (point-max))
-;;                        (if (re-search-backward genai--splitter nil t)
-;;                            (buffer-substring-no-properties
-;;                             (progn (forward-line 2) (point))
-;;                             (point-max))
-;;                          ""))))
-;;       (when (not (string-empty-p (string-trim input-text)))
-;;         (genai--run input-text)))))
+(defvar genai-readme-mapping
+  '(("pp" . "Program")
+    ("s" . "SciWrite")
+    ("c" . "Correct")
+    ;; Add more mappings as needed
+    )
+  "Mapping between shortcuts and their corresponding readme files.")
 
 
 (defun genai-send-buffer-input ()
@@ -330,30 +322,31 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
 ;; ("t prinT" "h parapHrase" "Visa" "Sciwrite-3-methods" "SciWrite-4-discussion" "SciWrite-3-methods" "SciWrite-2-introduction" "SciWrite-1-abstract" "SciWrite" "Remember" "ProgramTest" "Program" ...)
 
-(cl-defun genai--create-shortcuts (templates)
-  "Generate shortcuts for templates."
-  (let ((shortcuts (make-hash-table :test 'equal))
-        (counts (make-hash-table :test 'equal)))
 
-    ;; Sort templates first by their display name to ensure alphabetical precedence
-    (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
-    (dolist (template templates)
-      (let* ((name (car template))
-             (base (downcase (substring name 0 1)))
-             (count (gethash base counts 0))
-             (new-key base))
+;; ;; ;; working but letters are not unique
+;; (cl-defun genai--create-shortcuts (templates)
+;;   "Generate shortcuts for templates."
+;;   (let ((shortcuts (make-hash-table :test 'equal))
+;;         (counts (make-hash-table :test 'equal)))
 
-        ;; Adjust key for duplicates
-        (when (> count 0)
-          (setq new-key (concat base (make-string count ?'))))
+;;     ;; Sort templates first by their display name to ensure alphabetical precedence
+;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
+;;     (dolist (template templates)
+;;       (let* ((name (car template))
+;;              (base (downcase (substring name 0 1)))
+;;              (count (gethash base counts 0))
+;;              (new-key base))
 
-        ;; Update hash tables
-        (puthash new-key name shortcuts)
-        (puthash base (1+ count) counts)))
+;;         ;; Adjust key for duplicates
+;;         (when (> count 0)
+;;           (setq new-key (concat base (make-string count ?'))))
 
-    shortcuts))
+;;         ;; Update hash tables
+;;         (puthash new-key name shortcuts)
+;;         (puthash base (1+ count) counts)))
 
-;; ;; working but r shows the buffer as well
+;;     shortcuts))
+
 ;; (cl-defun genai--select-template ()
 ;;   "Prompt the user to select a template type for the GenAI model."
 ;;   (interactive)
@@ -387,6 +380,126 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 ;;         template-type))))
 
 
+;; (cl-defun genai--select-template ()
+;;   "Prompt the user to select a template type for the GenAI model."
+;;   (interactive)
+;;   (unless (minibufferp)
+;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
+;;            (templates-with-shortcuts
+;;             (mapcar (lambda (template)
+;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
+;;                          (cons (match-string 2 template) (match-string 1 template))
+;;                        (cons template (downcase (substring template 0 1)))))
+;;                    capital-templates))
+;;            (shortcuts (make-hash-table :test 'equal))
+;;            (prompt-parts nil))
+
+;;       ;; Build shortcuts and prompt
+;;       (dolist (template templates-with-shortcuts)
+;;         (puthash (cdr template) (car template) shortcuts)
+;;         (push (format "(%s) %s" (cdr template) (car template)) prompt-parts))
+
+;;       (let* ((prompt (concat "Enter or select preceding prompt: "
+;;                             (mapconcat 'identity (nreverse prompt-parts) ", ")
+;;                             ":\n"))
+;;              (input (read-string prompt))
+;;              (template-type (or (gethash input shortcuts)
+;;                               (if (string-blank-p input) "None" input))))
+
+;;         (unless (string= input "r")
+;;           (display-buffer (get-buffer-create "*GenAI*")))
+
+;;         template-type))))
+
+;; (cl-defun genai--select-template ()
+;;   "Prompt the user to select a template type for the GenAI model."
+;;   (interactive)
+;;   (unless (minibufferp)
+;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
+;;            (templates-with-shortcuts
+;;             (mapcar (lambda (template)
+;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
+;;                          (cons (match-string 2 template) (match-string 1 template))
+;;                        (cons template (downcase (substring template 0 1)))))
+;;                    capital-templates))
+;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
+;;            (prompt-parts nil))
+
+;;       (message "Templates with shortcuts: %S" templates-with-shortcuts) ;; Debug
+;;       (message "Generated shortcuts: %S" shortcuts) ;; Debug
+
+;;       ;; Build prompt
+;;       (maphash (lambda (key value)
+;;                  (push (format "(%s) %s" key value) prompt-parts))
+;;                shortcuts)
+
+;;       (let* ((prompt (concat "Enter or select preceding prompt: "
+;;                             (mapconcat 'identity (nreverse prompt-parts) ", ")
+;;                             ":\n"))
+;;              (input (read-string prompt))
+;;              (template-type (or (gethash input shortcuts)
+;;                               (if (string-blank-p input) "None" input))))
+
+;;         (unless (string= input "r")
+;;           (display-buffer (get-buffer-create "*GenAI*")))
+
+;;         template-type))))
+
+
+;; ;; working but withtout mapping variable
+;; (cl-defun genai--create-shortcuts (templates)
+;;   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
+;;   (let ((shortcuts (make-hash-table :test 'equal))
+;;         (counts (make-hash-table :test 'equal)))
+
+;;     ;; Sort templates first by their display name
+;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
+;;     (dolist (template templates)
+;;       (let* ((name (car template))
+;;              (base (downcase (substring name 0 1)))
+;;              (count (gethash base counts 0))
+;;              (new-key (if (= count 0)
+;;                          base
+;;                        (format "%s%d" base count))))
+
+;;         ;; Update hash tables
+;;         (puthash new-key name shortcuts)
+;;         (puthash base (1+ count) counts)))
+
+;;     shortcuts))
+
+(cl-defun genai--create-shortcuts (templates)
+  "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
+  (let ((shortcuts (make-hash-table :test 'equal))
+        (counts (make-hash-table :test 'equal)))
+
+    ;; First, apply predefined mappings
+    (when (boundp 'genai-readme-mapping)
+      (dolist (mapping genai-readme-mapping)
+        (let* ((key (car mapping))
+               (template-name (cdr mapping)))
+          (when-let ((template (cl-find template-name templates
+                                      :key #'car
+                                      :test #'string=)))
+            (puthash key (car template) shortcuts)
+            (puthash (substring key 0 1) 1 counts)))))
+
+    ;; Then handle remaining templates
+    (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
+    (dolist (template templates)
+      (let* ((name (car template))
+             (base (downcase (substring name 0 1)))
+             (count (gethash base counts 0))
+             (new-key (if (= count 0)
+                         base
+                       (format "%s%d" base count))))
+
+        (unless (gethash new-key shortcuts)  ; Skip if already mapped
+          (puthash new-key name shortcuts)
+          (puthash base (1+ count) counts))))
+
+    shortcuts))
+
 (cl-defun genai--select-template ()
   "Prompt the user to select a template type for the GenAI model."
   (interactive)
@@ -398,16 +511,22 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                          (cons (match-string 2 template) (match-string 1 template))
                        (cons template (downcase (substring template 0 1)))))
                    capital-templates))
-           (shortcuts (make-hash-table :test 'equal))
+           (shortcuts (genai--create-shortcuts templates-with-shortcuts))
            (prompt-parts nil))
 
-      ;; Build shortcuts and prompt
-      (dolist (template templates-with-shortcuts)
-        (puthash (cdr template) (car template) shortcuts)
-        (push (format "(%s) %s" (cdr template) (car template)) prompt-parts))
+      ;; Build prompt
+      (maphash (lambda (key value)
+                 (push (format "(%s) %s" key value) prompt-parts))
+               shortcuts)
+
+      ;; Sort prompt-parts alphabetically by the template name
+      (setq prompt-parts (sort prompt-parts
+                              (lambda (a b)
+                                (string< (cadr (split-string a ")" t))
+                                       (cadr (split-string b ")" t))))))
 
       (let* ((prompt (concat "Enter or select preceding prompt: "
-                            (mapconcat 'identity (nreverse prompt-parts) ", ")
+                            (mapconcat 'identity prompt-parts ", ")
                             ":\n"))
              (input (read-string prompt))
              (template-type (or (gethash input shortcuts)
@@ -418,39 +537,11 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 
         template-type))))
 
-;; (genai--select-template)
-
 (cl-defun genai--safe-shell-quote-argument (arg)
   "Safely shell-quote ARG if non-nil and non-empty, else return an empty string."
   (if (and arg (not (string-empty-p arg)))
       (shell-quote-argument arg)
     ""))
-
-;; (cl-defun genai--insert-prompt-template-type-and-engine (prompt template-type)
-;;   "Insert prompt, template type, and engine into *GenAI* buffer.
-;; PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
-;;   (with-current-buffer (get-buffer-create "*GenAI*")
-;;     (goto-char (point-max))
-;;     (insert "\n\n")
-;;     (insert genai--splitter)
-;;     (insert "\n\n")
-;;     (insert "> ")
-;;     (insert "YOU")
-;;     (insert "\n\n")
-;;     (insert "> ")
-;;     (insert template-type)
-;;     (insert "\n\n")
-;;     (insert "> ")
-;;     (insert prompt)
-;;     (insert "\n\n")
-;;     (insert genai--splitter)
-;;     (insert "\n\n")
-;;     (insert "> ")
-;;     (insert (upcase genai-engine))
-;;     (insert "\n\n")
-;;     (goto-char (point-max))
-;;     (run-at-time "0 sec" nil #'genai--scroll)))
-
 
 (cl-defun genai--insert-prompt-template-type-and-engine (prompt template-type)
   "Insert prompt, template type, and engine into *GenAI* buffer.
