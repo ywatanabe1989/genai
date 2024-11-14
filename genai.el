@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-14 17:17:50 (ywatanabe)>
+;;; Time-stamp: <2024-11-14 17:21:32 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -322,152 +322,6 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
 ;; ("t prinT" "h parapHrase" "Visa" "Sciwrite-3-methods" "SciWrite-4-discussion" "SciWrite-3-methods" "SciWrite-2-introduction" "SciWrite-1-abstract" "SciWrite" "Remember" "ProgramTest" "Program" ...)
 
-
-;; ;; ;; working but letters are not unique
-;; (cl-defun genai--create-shortcuts (templates)
-;;   "Generate shortcuts for templates."
-;;   (let ((shortcuts (make-hash-table :test 'equal))
-;;         (counts (make-hash-table :test 'equal)))
-
-;;     ;; Sort templates first by their display name to ensure alphabetical precedence
-;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
-;;     (dolist (template templates)
-;;       (let* ((name (car template))
-;;              (base (downcase (substring name 0 1)))
-;;              (count (gethash base counts 0))
-;;              (new-key base))
-
-;;         ;; Adjust key for duplicates
-;;         (when (> count 0)
-;;           (setq new-key (concat base (make-string count ?'))))
-
-;;         ;; Update hash tables
-;;         (puthash new-key name shortcuts)
-;;         (puthash base (1+ count) counts)))
-
-;;     shortcuts))
-
-;; (cl-defun genai--select-template ()
-;;   "Prompt the user to select a template type for the GenAI model."
-;;   (interactive)
-;;   (unless (minibufferp)
-;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
-;;            (templates-with-shortcuts
-;;             (mapcar (lambda (template)
-;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
-;;                          (cons (match-string 2 template) (match-string 1 template))
-;;                        (cons template (downcase (substring template 0 1)))))
-;;                    capital-templates))
-;;            (shortcuts (make-hash-table :test 'equal))
-;;            (prompt-parts nil))
-
-;;       ;; Build shortcuts and prompt
-;;       (dolist (template templates-with-shortcuts)
-;;         (puthash (cdr template) (car template) shortcuts)
-;;         (push (format "(%s) %s" (cdr template) (car template)) prompt-parts))
-
-;;       (let* ((prompt (concat "Enter or select preceding prompt: "
-;;                             (mapconcat 'identity (nreverse prompt-parts) ", ")
-;;                             ":\n"))
-;;              (input (read-string prompt))
-;;              (template-type (or (gethash input shortcuts)
-;;                               (if (string-blank-p input) "None" input))))
-
-;;         (display-buffer (get-buffer-create "*GenAI*"))
-
-;;         (when (called-interactively-p 'interactive)
-;;           (message "Template type selected: %s" template-type))
-;;         template-type))))
-
-
-;; (cl-defun genai--select-template ()
-;;   "Prompt the user to select a template type for the GenAI model."
-;;   (interactive)
-;;   (unless (minibufferp)
-;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
-;;            (templates-with-shortcuts
-;;             (mapcar (lambda (template)
-;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
-;;                          (cons (match-string 2 template) (match-string 1 template))
-;;                        (cons template (downcase (substring template 0 1)))))
-;;                    capital-templates))
-;;            (shortcuts (make-hash-table :test 'equal))
-;;            (prompt-parts nil))
-
-;;       ;; Build shortcuts and prompt
-;;       (dolist (template templates-with-shortcuts)
-;;         (puthash (cdr template) (car template) shortcuts)
-;;         (push (format "(%s) %s" (cdr template) (car template)) prompt-parts))
-
-;;       (let* ((prompt (concat "Enter or select preceding prompt: "
-;;                             (mapconcat 'identity (nreverse prompt-parts) ", ")
-;;                             ":\n"))
-;;              (input (read-string prompt))
-;;              (template-type (or (gethash input shortcuts)
-;;                               (if (string-blank-p input) "None" input))))
-
-;;         (unless (string= input "r")
-;;           (display-buffer (get-buffer-create "*GenAI*")))
-
-;;         template-type))))
-
-;; (cl-defun genai--select-template ()
-;;   "Prompt the user to select a template type for the GenAI model."
-;;   (interactive)
-;;   (unless (minibufferp)
-;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
-;;            (templates-with-shortcuts
-;;             (mapcar (lambda (template)
-;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
-;;                          (cons (match-string 2 template) (match-string 1 template))
-;;                        (cons template (downcase (substring template 0 1)))))
-;;                    capital-templates))
-;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
-;;            (prompt-parts nil))
-
-;;       (message "Templates with shortcuts: %S" templates-with-shortcuts) ;; Debug
-;;       (message "Generated shortcuts: %S" shortcuts) ;; Debug
-
-;;       ;; Build prompt
-;;       (maphash (lambda (key value)
-;;                  (push (format "(%s) %s" key value) prompt-parts))
-;;                shortcuts)
-
-;;       (let* ((prompt (concat "Enter or select preceding prompt: "
-;;                             (mapconcat 'identity (nreverse prompt-parts) ", ")
-;;                             ":\n"))
-;;              (input (read-string prompt))
-;;              (template-type (or (gethash input shortcuts)
-;;                               (if (string-blank-p input) "None" input))))
-
-;;         (unless (string= input "r")
-;;           (display-buffer (get-buffer-create "*GenAI*")))
-
-;;         template-type))))
-
-
-;; ;; working but withtout mapping variable
-;; (cl-defun genai--create-shortcuts (templates)
-;;   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
-;;   (let ((shortcuts (make-hash-table :test 'equal))
-;;         (counts (make-hash-table :test 'equal)))
-
-;;     ;; Sort templates first by their display name
-;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
-;;     (dolist (template templates)
-;;       (let* ((name (car template))
-;;              (base (downcase (substring name 0 1)))
-;;              (count (gethash base counts 0))
-;;              (new-key (if (= count 0)
-;;                          base
-;;                        (format "%s%d" base count))))
-
-;;         ;; Update hash tables
-;;         (puthash new-key name shortcuts)
-;;         (puthash base (1+ count) counts)))
-
-;;     shortcuts))
-
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
   (let ((shortcuts (make-hash-table :test 'equal))
@@ -536,6 +390,8 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
           (display-buffer (get-buffer-create "*GenAI*")))
 
         template-type))))
+;; (genai--select-template)
+
 
 (cl-defun genai--safe-shell-quote-argument (arg)
   "Safely shell-quote ARG if non-nil and non-empty, else return an empty string."
@@ -619,37 +475,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
     command))
 
-;; ;;;###autoload
-;; (defun genai-show-history (&optional num-interactions)
-;;   "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
-;;   (interactive "sEnter the number of latest interactions: ")
-;;   (let* ((genai-all-history-buffer (get-buffer-create "*GenAI All History*"))
-;;          ;; (num-interactions (string-to-number (or num-interactions "1024")))
-;;          if number , okay but if string, string-to-number num_interactions
-;;          (num-interactions (or num-interactions 1024))
-;;          )
-;;     (with-current-buffer genai-all-history-buffer
-;;       (erase-buffer))
-
-;;     (display-buffer genai-all-history-buffer)
-
-;;     (let ((command-list (list genai-python-bin-path
-;;                               genai-python-script-path-show-history
-;;                               "--human_history_path" genai-history-human-path
-;;                               "--n_interactions" (number-to-string num-interactions)
-;;                               )))
-;;       (make-process
-;;        :name "genai-show-history"
-;;        :buffer genai-all-history-buffer
-;;        :command command-list
-;;        :sentinel (lambda (process event)
-;;                    (when (string= event "finished\n")
-;;                      (with-current-buffer genai-all-history-buffer
-;;                        (goto-char (point-min))
-;;                        (genai--scroll-history)
-;;                        (markdown-mode)
-;;                        )))))
-;;     (message "Loading history to *GenAI All History* buffer...")))
 
 ;;;###autoload
 (defun genai-show-history (&optional num-interactions)
@@ -710,72 +535,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (insert "[]"))
 
     (message "GenAI history has been reset. Backups created in %s" backup-dir)))
-
-;; (defun genai--start-spinner ()
-;;   "Start the spinner animation in the GenAI buffer."
-;;   (when (and (get-buffer "*GenAI*")
-;;              (not genai--spinner-timer))
-;;     (setq genai--spinner-timer
-;;           (run-with-timer 0 0.1
-;;                          (lambda ()
-;;                            (with-current-buffer "*GenAI*"
-;;                              (save-excursion
-;;                                (goto-char (point-max))
-;;                                (let ((inhibit-read-only t))
-;;                                  (if (looking-back "[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]" 1)
-;;                                      (delete-char -1))
-;;                                  (insert (nth genai--spinner-index genai--spinner-frames))
-;;                                  (setq genai--spinner-index
-;;                                        (mod (1+ genai--spinner-index)
-;;                                             (length genai--spinner-frames)))))))))))
-
-;; (defun genai--start-spinner ()
-;;   "Start the spinner animation in the GenAI buffer."
-;;   (when (and (get-buffer "*GenAI*")
-;;              (not genai--spinner-timer))
-;;     (with-current-buffer "*GenAI*"
-;;       (goto-char (point-max))
-;;       (search-backward (upcase genai-engine))
-;;       (goto-char (line-end-position))
-;;       (insert "\n")
-;;       (setq genai--fixed-spinner-position (point-marker)))
-;;     (setq genai--spinner-timer
-;;           (run-with-timer 0 0.1
-;;                          (lambda ()
-;;                            (with-current-buffer "*GenAI*"
-;;                              (save-excursion
-;;                                (goto-char genai--fixed-spinner-position)
-;;                                (let ((inhibit-read-only t))
-;;                                  (delete-region (point) (line-end-position))
-;;                                  (insert (nth genai--spinner-index genai--spinner-frames))
-;;                                  (setq genai--spinner-index
-;;                                        (mod (1+ genai--spinner-index)
-;;                                             (length genai--spinner-frames)))))))))))
-
-
-;; (defun genai--start-spinner ()
-;;   "Start the spinner animation in the GenAI buffer."
-;;   (when (and (get-buffer "*GenAI*")
-;;              (not genai--spinner-timer))
-;;     (with-current-buffer "*GenAI*"
-;;       (goto-char (point-max))
-;;       (search-backward (upcase genai-engine))
-;;       (goto-char (line-end-position))
-;;       (setq genai--fixed-spinner-position (point-marker))
-;;       (let ((font-lock-mode nil)) ; Disable font-lock locally
-;;         (setq genai--spinner-timer
-;;               (run-with-timer 0 0.1
-;;                              (lambda ()
-;;                                (with-current-buffer "*GenAI*"
-;;                                  (save-excursion
-;;                                    (goto-char genai--fixed-spinner-position)
-;;                                    (let ((inhibit-read-only t))
-;;                                      (delete-region (point) (line-end-position))
-;;                                      (insert (nth genai--spinner-index genai--spinner-frames))
-;;                                      (setq genai--spinner-index
-;;                                            (mod (1+ genai--spinner-index)
-;;                                                 (length genai--spinner-frames)))))))))))))
-
 
 (defun genai--start-spinner ()
   "Start the spinner animation in the GenAI buffer."
@@ -838,21 +597,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
    (t
     (message "GenAI process: %s" msg))))
 
-
-;; (defun genai--process-sentinel (_process msg)
-;;   "Custom sentinel for the GenAI process.
-;; Handles different process states and calls cleanup when appropriate."
-;;   (cond
-;;    ((string-match-p "finished\\|exited" msg)
-;;     (progress-reporter-done genai--progress-reporter)
-;;     (message "GenAI process finished.")
-;;     (genai--clean-up-all))
-;;    ((string-match-p "error" msg)
-;;     (progress-reporter-done genai--progress-reporter)
-;;     (message "GenAI process encountered an error: %s" msg))
-;;    (t
-;;     (message "GenAI process: %s" msg))))
-
 (cl-defun genai--clean-up-all ()
   (interactive)
   (genai--clean-up-output)
@@ -864,29 +608,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (progress-reporter-update genai--progress-reporter (random 100))
     (when (process-live-p genai--process)
       (run-with-timer 0.5 nil #'genai--update-progress))))
-
-;; ;; working, probably due to correct command parsing
-;; (cl-defun genai--start-python-process (prompt)
-;;   "Start the GenAI process with the given PROMPT using a shell command.
-;;    If a process is already running, stop it before starting a new one."
-;;   (interactive "sEnter prompt: ")
-
-;;   ;; Stop existing process if running
-;;   (when (and genai--process (process-live-p genai--process))
-;;     (interrupt-process genai--process)
-;;     (delete-process genai--process)
-;;     (message "Existing GenAI process stopped."))
-
-;;   (let* ((command (genai--construct-python-command prompt))
-;;          (process (start-process-shell-command "genai--process" "*GenAI*" command)))
-;;     (setq genai--process process)
-;;     (set-process-sentinel process #'genai--process-sentinel)
-
-;;     ;; Start the progress reporter
-;;     (setq genai--progress-reporter (make-progress-reporter "GenAI Processing..." 0 100))
-;;     (genai--update-progress)
-
-;;     process))
 
 ;; Update start-python-process
 (cl-defun genai--start-python-process (prompt)
@@ -923,18 +644,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (while (search-forward-regexp "\x1b\\[\\([0-9;]*\\)m" nil t)
         (replace-match "")))))
 
-;; (cl-defun genai--clean-up-output ()
-;;   "Remove ANSI escape codes and specific unwanted messages from the *GenAI* buffer."
-;;   (when (get-buffer "*GenAI*")
-;;     (with-current-buffer "*GenAI*"
-;;       (let ((inhibit-read-only t))
-;;         ;; Apply ANSI color codes
-;;         (ansi-color-apply-on-region (point-min) (point-max))
-;;         ;; Remove any remaining ANSI escape sequences
-;;         (goto-char (point-min))
-;;         (while (re-search-forward "\x1b\\[[\x30-\x3F]*[\x20-\x2F]*[\x40-\x7E]" nil t)
-;;           (replace-match ""))))))
-
 (cl-defun genai--run (prompt)
   "Run GenAI command with prompt."
   (interactive)
@@ -949,59 +658,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (font-lock-ensure)
       (message "GenAI: Running...")
       (genai--start-python-process prompt))))
-
-;; (cl-defun genai--run (prompt)
-;;   "Run GenAI command with prompt."
-;;   (interactive)
-;;   (cond
-;;    ((equal prompt "g")
-;;     (switch-to-buffer-other-window "*GenAI*")
-;;     (keyboard-quit)
-;;     (message "Jump to the \"*GenAI*\" buffer"))
-
-;;    ((equal prompt "r")
-;;     (with-current-buffer (get-buffer-create "*GenAI*")
-;;       (goto-char (point-max))
-;;       (font-lock-ensure)
-;;       (message "GenAI: Running in background...")
-;;       (genai--start-python-process prompt)))
-
-;;    (t
-;;     (with-current-buffer (get-buffer-create "*GenAI*")
-;;       (goto-char (point-max))
-;;       (font-lock-ensure)
-;;       (message "GenAI: Running...")
-;;       (genai--start-python-process prompt)
-;;       (display-buffer (current-buffer))))))
-
-;; (cl-defun genai--run (&optional prompt)
-;;   "Run GenAI command with prompt."
-;;   (interactive)
-;;   (unless prompt
-;;     (setq prompt (read-string "Prompt: ")))
-
-;;   (cond
-;;    ((equal prompt "g")
-;;     (switch-to-buffer-other-window "*GenAI*")
-;;     (keyboard-quit)
-;;     (message "Jump to the \"*GenAI*\" buffer"))
-
-;;    ((equal prompt "r")
-;;     (let ((inhibit-message t))
-;;       (with-current-buffer (get-buffer-create "*GenAI*")
-;;         (goto-char (point-max))
-;;         (font-lock-ensure)
-;;         (message prompt)
-;;         (genai--start-python-process prompt)))
-;;     (message "GenAI: Running in background..."))
-
-;;    (t
-;;     (with-current-buffer (get-buffer-create "*GenAI*")
-;;       (goto-char (point-max))
-;;       (font-lock-ensure)
-;;       (message "GenAI: Running...")
-;;       (genai--start-python-process prompt)
-;;       (display-buffer (current-buffer))))))
 
 
 ;;;###autoload
@@ -1033,35 +689,6 @@ The response will be displayed in the *GenAI* buffer."
     ;; Display the output to the *GenAI* buffer
     ;; (display-buffer buffer)
     ))
-
-;; ;;;###autoload
-;; (defun genai-on-region ()
-;;   "Run GenAI command on selected region or prompt for input.
-;; If a region is selected, use that text as the prompt.
-;; Otherwise, prompt the user to enter a prompt.
-;; The response will be displayed in the *GenAI* buffer."
-;;   (interactive)
-;;   (genai--init)  ; Ensure initialization at first use.
-;;   (genai--ensure-dependencies)
-;;   (let* ((region-text (if (use-region-p)
-;;                           (if (y-or-n-p "Use selected region as input?")
-;;                               (buffer-substring-no-properties (region-beginning) (region-end))
-;;                             (read-string "Enter prompt: " ""))
-;;                         (read-string "Enter prompt: " "")))
-;;          (buffer (get-buffer-create "*GenAI*")))
-
-;;     ;; Prepare the buffer for output
-;;     (with-current-buffer buffer
-;;       (unless (eq major-mode 'genai-mode)
-;;         (genai-mode)))
-
-;;     ;; Run the Gen AI
-;;     (genai--run region-text)
-
-;;     ;; Display the output to the *GenAI* buffer
-;;     ;; (display-buffer buffer)
-;;     ))
-
 
 
 (cl-defun genai--scroll ()
