@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-14 17:21:32 (ywatanabe)>
+;;; Time-stamp: <2024-11-14 18:01:04 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -75,16 +75,25 @@
 ;; (setq genai-human-history-path
 ;;     (concat (getenv "EMACS_GENAI_DIR") "history-human-secret.json"))
 ;;
+;; ;; Templates:
+;;
+;; Templates are markdown files (*.md) stored in './templates' directory
+;; (default: $HOME/.emacs.d/lisp/emacs-genai/templates/).
+;;
+;; Template Selection:
+;; 1. Default: First uppercase letter of filename is used as shortcut
+;; 2. Custom: Define your own shortcuts in genai-readme-mapping:
+;;    (setq genai-readme-mapping
+;;          '(("p" . "Program")                ; p -> Program.md
+;;            ("e" . "Email")                  ; s -> SciWrite.md
+;;            ("c" . "Correct")                ; c -> Correct.md
+;;            ("my" . "MyAwesomeTemplate")))   ; my -> MyAwesometemplate.md
+;;
+;; Note: Templates should contain "PLACEHOLDER" where your input will be inserted.
+;;
 ;; ;; Key Bindings
 ;; (define-key global-map (kbd "C-M-g") 'genai-on-region)
 
-;;; Templates:
-;;
-;; Templates can be managed under the './templates' directory
-;; (default: $HOME/.emacs.d/lisp/emacs-genai/templates/*.md).
-;; Uppercase letters in the template file name are used as shortcut keys.
-;; The "PLACEHOLDER" keyword in a template file will be replaced
-;; with your input.
 
 
 ;;; Code:
@@ -207,13 +216,14 @@
 (defvar-local genai-input-marker nil
   "Marker for the input position in GenAI buffer.")
 
-(defvar genai-readme-mapping
-  '(("pp" . "Program")
-    ("s" . "SciWrite")
-    ("c" . "Correct")
-    ;; Add more mappings as needed
-    )
-  "Mapping between shortcuts and their corresponding readme files.")
+
+(defvar genai-readme-mapping nil
+  "Mapping between shortcuts and their corresponding readme files.
+Example: Template shortcuts can be customized as:
+  '((\"p\" . \"Program\")              ; p -> Program.md
+    (\"e\" . \"Email\")                ; e -> Email.md
+    (\"c\" . \"Correct\")              ; c -> Correct.md
+    (\"my\" . \"MyAwesomeTemplate\"))  ; my -> MyAwesomeTemplate.md")
 
 
 (defun genai-send-buffer-input ()
@@ -320,7 +330,6 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                     files)
             'string>))))
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
-;; ("t prinT" "h parapHrase" "Visa" "Sciwrite-3-methods" "SciWrite-4-discussion" "SciWrite-3-methods" "SciWrite-2-introduction" "SciWrite-1-abstract" "SciWrite" "Remember" "ProgramTest" "Program" ...)
 
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
@@ -354,6 +363,43 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
 
     shortcuts))
 
+;; (cl-defun genai--select-template ()
+;;   "Prompt the user to select a template type for the GenAI model."
+;;   (interactive)
+;;   (unless (minibufferp)
+;;     (let* ((capital-templates (genai--fetch-templates genai-templates-dir))
+;;            (templates-with-shortcuts
+;;             (mapcar (lambda (template)
+;;                      (if (string-match "^\\([a-z]\\) \\(.+\\)$" template)
+;;                          (cons (match-string 2 template) (match-string 1 template))
+;;                        (cons template (downcase (substring template 0 1)))))
+;;                    capital-templates))
+;;            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
+;;            (prompt-parts nil))
+
+;;       ;; Build prompt
+;;       (maphash (lambda (key value)
+;;                  (push (format "(%s) %s" key value) prompt-parts))
+;;                shortcuts)
+
+;;       ;; Sort prompt-parts alphabetically by the template name
+;;       (setq prompt-parts (sort prompt-parts
+;;                               (lambda (a b)
+;;                                 (string< (cadr (split-string a ")" t))
+;;                                        (cadr (split-string b ")" t))))))
+
+;;       (let* ((prompt (concat "Select template or Enter additional message: \n"
+;;                             (mapconcat 'identity prompt-parts "  ")
+;;                             "\n"))
+;;              (input (read-string prompt))
+;;              (template-type (or (gethash input shortcuts)
+;;                               (if (string-blank-p input) "None" input))))
+
+;;         (unless (string= input "r")
+;;           (display-buffer (get-buffer-create "*GenAI*")))
+
+;;         template-type))))
+
 (cl-defun genai--select-template ()
   "Prompt the user to select a template type for the GenAI model."
   (interactive)
@@ -366,11 +412,13 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                        (cons template (downcase (substring template 0 1)))))
                    capital-templates))
            (shortcuts (genai--create-shortcuts templates-with-shortcuts))
-           (prompt-parts nil))
+           (prompt-parts nil)
+           (completion-list (list ""))) ;; Add empty string as default
 
       ;; Build prompt
       (maphash (lambda (key value)
-                 (push (format "(%s) %s" key value) prompt-parts))
+                 (push (format "(%s) %s" key value) prompt-parts)
+                 (push value completion-list))
                shortcuts)
 
       ;; Sort prompt-parts alphabetically by the template name
@@ -379,10 +427,11 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                                 (string< (cadr (split-string a ")" t))
                                        (cadr (split-string b ")" t))))))
 
-      (let* ((prompt (concat "Enter or select preceding prompt: "
-                            (mapconcat 'identity prompt-parts ", ")
-                            ":\n"))
-             (input (read-string prompt))
+      (let* (;; (prompt (concat "Select template or Enter additional message: \n"
+             ;;                (mapconcat 'identity prompt-parts "  ")
+             ;;                "\n"))
+             ;; (_ (message prompt))
+             (input (completing-read "Select Template or Type Manual Instruction: " completion-list nil nil ""))
              (template-type (or (gethash input shortcuts)
                               (if (string-blank-p input) "None" input))))
 
