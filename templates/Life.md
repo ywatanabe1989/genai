@@ -1,7 +1,7 @@
 <!-- ---
-!-- title: ./genai/templates/Alternative.md
+!-- title: ./genai/templates/Life.md
 !-- author: ywatanabe
-!-- date: 2024-11-15 09:33:39
+!-- date: 2024-11-15 09:33:47
 !-- --- -->
 
 
