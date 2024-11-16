@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Time-stamp: "2024-11-16 13:27:09 (ywatanabe)"
+# File: ./genai/genai.py
+
+__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Time-stamp: "2024-11-11 18:53:12 (ywatanabe)"
 # File: ./genai/genai.py
 
@@ -20,6 +27,7 @@ from mngs.io import glob as mngs_io_glob
 from mngs.io import load as mngs_io_load
 from mngs.io import save as mngs_io_save
 from mngs.path import split as mngs_path_split
+from mngs.str import printc
 
 # __file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
 
@@ -118,10 +126,10 @@ def run_genai(
     template = determine_template(template_type)
     ai_prompt = template.replace("PLACEHOLDER", prompt)
 
-    # print(template)
-
     # Adds the general instruction
     ai_prompt = GENERAL_INSTRUCTION + ai_prompt
+
+    # printc(f"Prompt passed:n{ai_prompt}")
 
     # Main
     if prompt.strip() == "":
