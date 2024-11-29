@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-16 13:26:34 (ywatanabe)>
+;;; Time-stamp: <2024-11-17 12:52:37 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -584,11 +584,11 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
         (unless (string= input "r")
           (display-buffer (get-buffer-create "*GenAI*")))
 
-        ;; Get last word if contains space
-        (if (string-match " " template-type)
-            (car (last (split-string template-type)))
-          template-type)))))
-        ;; template-type))))
+        ;; ;; Get last word if contains space
+        ;; (if (string-match " " template-type)
+        ;;     (car (last (split-string template-type)))
+        ;;   template-type)))))
+        template-type))))
 ;; (genai--select-template)
 
 

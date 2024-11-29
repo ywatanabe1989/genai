@@ -1,7 +1,7 @@
 <!-- ---
-!-- title: ./genai/templates/Program.md
+!-- title: ./genai/templates/Programming.md
 !-- author: ywatanabe
-!-- date: 2024-11-10 10:21:52
+!-- date: 2024-11-29 18:01:33
 !-- --- -->
 
 
@@ -112,6 +112,8 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 - Do not skip any lines as much as possible. I am really suprized by your speed and accuracy of coding and appreciate your support and patience.
 
 - My code may include my own Python utility package, mngs. Keep its syntax unchanged.
+  - For scripts in mngs package, please import functions using underscore to keep namespace clean (e.g., import numpy as _np).
+  - For mngs scripts, please use relative import to reduce dependency (e.g., from ..io._load import load)
 
 - When possible, independently implement reusable functions or classes as I will incorporate them into my mngs toolbox.
 

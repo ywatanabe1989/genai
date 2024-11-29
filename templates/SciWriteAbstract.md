@@ -1,7 +1,7 @@
 <!-- ---
-!-- title: SciWrite-1-abstract.md
+!-- title: ./genai/templates/SciWriteAbstract.md
 !-- author: ywatanabe
-!-- date: 2024-11-04 14:32:38
+!-- date: 2024-11-19 22:07:20
 !-- --- -->
 
 
@@ -27,6 +27,11 @@ The aim of abstract is to provide clear, concise, and accessible summary to a br
   - Use present tense while stating general facts (which are supported by more than three privious works).
   - Use past tense when writing about one specific prior research.
   - Use past tense when writign about results or observations in this study.
+- Return as code block (for just convenience for selection) like this:
+  ``` sciwrite-abstract
+  YOUR REVISION
+  ```
+- Use LaTeX format
 
 
 ------------------

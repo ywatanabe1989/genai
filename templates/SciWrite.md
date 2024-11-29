@@ -1,3 +1,10 @@
+<!-- ---
+!-- title: ./genai/templates/SciWrite.md
+!-- author: ywatanabe
+!-- date: 2024-11-19 23:18:55
+!-- --- -->
+
+
 ----------
 Background
 ----------
@@ -22,6 +29,14 @@ Please proofread them with the following rules below.
   - Legends should be also written in nown forms.
 - Never remove references and latex code.
 - Enclose revised text in code indicators, with the language code \"GenAI\" (\`\`\` GenAI\nREVISED TEXT HERE\n\`\`\`).
+
+- Return as code block (for just convenience for selection) like this:
+  ``` sciwrite
+  YOUR REVISION
+  ```
+- Use LaTeX format
+
+- When adding references (to literature, tables, or figures) will enhance the quality of the paper, please insert a placeholder using this LaTeX command `\hlref{XXX}`. This command will highlight any unlinked content so that it will work well as a placeholder.
 
 ----------
 Now, the original manuscript to be revised is as follows:

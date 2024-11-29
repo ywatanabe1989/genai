@@ -1,7 +1,7 @@
 <!-- ---
-!-- title: SciWrite-2-introduction.md
+!-- title: ./genai/templates/SciWriteIntroduction.md
 !-- author: ywatanabe
-!-- date: 2024-11-04 14:32:41
+!-- date: 2024-11-19 22:21:24
 !-- --- -->
 
 
@@ -39,6 +39,14 @@ The aim of introduction is to offer readers with the background necessary to und
   - Pay careful attention to the use of hyphens, en dashes, em dashes, and minus signs.
   - Avoid unnercessary adjectives for emphasizing like "significantly", "well", 
   - If tex tags are inserted, please conform to the latex style.
+
+- Return as code block (for just convenience for selection) like this:
+  ``` sciwrite-introduction
+  YOUR REVISION
+  ```
+- Use LaTeX format
+
+- When adding references (to literature, tables, or figures) will enhance the quality of the paper, please insert a placeholder using this LaTeX command `\hlref{XXX}`. This command will highlight any unlinked content so that it will work well as a placeholder.
 
 Now, the template is as follows:
 ------------------
