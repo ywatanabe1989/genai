@@ -1,7 +1,7 @@
 <!-- ---
-!-- title: ./genai/templates/Program.md
+!-- title: ./genai/templates/Programming.md
 !-- author: ywatanabe
-!-- date: 2024-11-10 10:21:52
+!-- date: 2024-12-08 09:24:09
 !-- --- -->
 
 
@@ -24,6 +24,23 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 ################################################################################
 - Avoid unnecessary comments as they are disruptive.
 	- Return only the updated code without comments.
+
+- When code is edited, please use + and - signs to indicated diff lines.
+
+- String should be split into shorter lines using f-string concatenation with parentheses:
+- NG
+  ``` python
+  error_msg = f"Failed to parse JSON response: {error}\nPrompt: {self._ai_prompt}\nGenerated command: {commands}\nResponse: {response_text}"
+  ```
+- Good
+  ``` python
+  error_msg = (
+      f"Failed to parse JSON response: {error}\n"
+      f"Prompt: {self._ai_prompt}\n"
+      f"Generated command: {commands}\n"
+      f"Response: {response_text}"
+  )
+  ```
 
 - Avoid 1-letter variable, as seaching them is challenging
   - For example, rename variable x to xx to balance readability, writability, and searchability.
@@ -112,6 +129,8 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 - Do not skip any lines as much as possible. I am really suprized by your speed and accuracy of coding and appreciate your support and patience.
 
 - My code may include my own Python utility package, mngs. Keep its syntax unchanged.
+  - For scripts in mngs package, please import functions using underscore to keep namespace clean (e.g., import numpy as _np).
+  - For mngs scripts, please use relative import to reduce dependency (e.g., from ..io._load import load)
 
 - When possible, independently implement reusable functions or classes as I will incorporate them into my mngs toolbox.
 
@@ -245,7 +264,7 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
   # Author: ywatanabe (ywatanabe@alumni.u-tokyo.ac.jp)
   # Date: $(date +"%Y-%m-%d-%H-%M")
 
-  LOG_FILE="$0.log"
+  LOG_FILE=."$0.log" # Do not remove existing extension (e.g., script.sh.log is preferred)
 
   usage() {
       echo "Usage: $0 [-s|--subject <subject>] [-m|--message <message>] [-h|--help]"
@@ -262,12 +281,28 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
   }
 
   my-echo() {
-    # Print the arguments with my signature
-    #
-    # Usage
-    # my-echo Hello # Hello (Yusuke Watanabe)
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -s|--subject)
+                subject="$1"
+                shift 1
+                ;;
+            -m|--message)
+                shift
+                message="$1"
+                shift
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                echo "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
 
-    echo "$@" "(Yusuke Watanabe)"
+    echo "${subject:-Subject}: ${message:-Message} (Yusuke Watanabe)"
   }
 
   main() {

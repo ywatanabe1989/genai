@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
-;;; Author: ywatanabe
-;;; Time-stamp: <2024-11-16 13:26:34 (ywatanabe)>
+;;; Author: 2024-12-18 07:59:51
+;;; Time-stamp: <2024-12-18 07:59:51 (ywatanabe)>
 ;;; File: ./genai/genai.el
 
 
@@ -44,7 +44,10 @@
 ;;       Run GenAI on selected text. If no region is selected,
 ;;       a manual prompt will be requested.
 ;;
-;; - M-x genai-show-history :
+;; - M-x genai-show-history | M-x genai-on-region -> g:
+;;       Open the "*GenAI*" buffer
+;;
+;; - M-x genai-show-history | M-x genai-on-region -> h:
 ;;       Display conversation history
 ;;
 ;; - M-n (on "GenAI" buffer):
@@ -144,6 +147,10 @@
   "The path to the Python script used by genai.el."
   :type 'string)
 
+(defcustom genai-temp-prompt-path (concat genai-home-dir ".temp-prompt.txt")
+  "Temporally text path to the Python script used by genai.el."
+  :type 'string)
+
 (defcustom genai-history-human-path (concat genai-home-dir "history-human-secret.json")
   "Path to the history file used by genai.el."
   :type 'string)
@@ -179,9 +186,6 @@
   "Temperature setting used with the engine."
   :type 'string)
 
-(defvar genai--progress-reporter nil
-  "Progress reporter for GenAI process.")
-
 (defconst genai--splitter
   "--------------------------------------------------------------------------------"
   "Splitter for GenAI outputs in buffer.")
@@ -216,7 +220,6 @@
 (defvar-local genai-input-marker nil
   "Marker for the input position in GenAI buffer.")
 
-
 (defvar genai-template-mapping nil
   "Mapping between shortcuts and their corresponding readme files.
 Example: Template shortcuts can be customized as:
@@ -225,21 +228,25 @@ Example: Template shortcuts can be customized as:
     (\"c\" . \"Correct\")              ; c -> Correct.md
     (\"my\" . \"MyAwesomeTemplate\"))  ; my -> MyAwesomeTemplate.md")
 
+(defcustom genai-buffer-max-lines 1024
+  "Maximum number of lines to keep in *GenAI* buffer."
+  :type 'integer
+  :group 'genai)
 
 (defun genai-send-buffer-input ()
   "Send text from the last separator as input to GenAI."
   (interactive)
   (with-current-buffer "*GenAI*"
     (let* ((input-start (save-excursion
-                         (goto-char (point-max))
-                         (or (re-search-backward genai--splitter nil t)
-                             (point-min))))
+                          (goto-char (point-max))
+                          (or (re-search-backward genai--splitter nil t)
+                              (point-min))))
            (input-text (buffer-substring-no-properties
-                       (save-excursion
-                         (goto-char input-start)
-                         (forward-line 2)
-                         (point))
-                       (point-max))))
+                        (save-excursion
+                          (goto-char input-start)
+                          (forward-line 2)
+                          (point))
+                        (point-max))))
       (when (not (string-empty-p (string-trim input-text)))
         (genai--insert-prompt-template-type-and-engine input-text "chat")
         (genai--run input-text)))))
@@ -261,17 +268,18 @@ before running any GenAI functionality."
 (cl-defun genai--check-python-dependencies ()
   "Check if python mngs package is installed."
   (interactive)
-  (let ((check-command (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
-                               genai-python-bin-path)))
+  (let ((check-command
+         (format "%s -c 'import pkg_resources; pkg_resources.require(\"mngs>=1.5.5\")'"
+                 genai-python-bin-path)))
     (async-start
-     `(lambda () (shell-command-to-string ,check-command))
+     `(lambda ()
+        (shell-command-to-string ,check-command))
      (lambda (result)
        (if (string-match "DistributionNotFound\\|VersionConflict" result)
            (when (yes-or-no-p (format "The required Python package 'mngs>=1.5.5' is not installed or outdated for %s. Install/upgrade it now?" genai-python-bin-path))
              (async-start
               `(lambda () (shell-command-to-string ,(format "%s -m pip install 'mngs>=1.5.5'" genai-python-bin-path)))
-              (lambda (_) (message "Package installed/upgraded."))))
-         )))))
+              (lambda (_) (message "Package installed/upgraded.")))))))))
 
 (cl-defun genai--create-buffer-file (buffer)
   "Create a temporary file with the text in BUFFER and return its file name.
@@ -280,16 +288,13 @@ BUFFER can be a buffer object or a buffer name."
   (let ((file (make-temp-file "genai-prompt-" nil ".md")))
     (condition-case err
         (progn
-
           (with-temp-file file
             (with-current-buffer (get-buffer buffer)
               (insert-buffer-substring buffer)))
-
           (let ((temp-buffer (find-file-noselect file)))
             (with-current-buffer temp-buffer
               (text-mode)))
           file)
-
       (error
        (when file
          (delete-file file))
@@ -367,127 +372,20 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
     (sort
      (delq nil
            (mapcar (lambda (f)
-                    (let* ((name-without-ext (substring f 0 (string-match "\\.md" f)))
-                           (capital-info (--genai-find-first-capital f))
-                           (first-capital (car capital-info))
-                           (capital-pos (cdr capital-info)))
-                      (cond
-                       ((= capital-pos 0)
-                        (format "%s" name-without-ext))
-                       (capital-pos
-                        (format "%s %s" first-capital name-without-ext))
-                       (t nil))))
-                  (directory-files dir nil ".*[A-Z].*\\.md$")))
+                     (let* ((name-without-ext (substring f 0 (string-match "\\.md" f)))
+                            (capital-info (--genai-find-first-capital f))
+                            (first-capital (car capital-info))
+                            (capital-pos (cdr capital-info)))
+                       (cond
+                        ((= capital-pos 0)
+                         (format "%s" name-without-ext))
+                        (capital-pos
+                         (format "%s %s" first-capital name-without-ext))
+                        (t nil))))
+                   (directory-files dir nil ".*[A-Z].*\\.md$")))
      #'string<)))
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
 
-;; (cl-defun genai--create-shortcuts (templates)
-;;   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
-;;   (let ((shortcuts (make-hash-table :test 'equal))
-;;         (counts (make-hash-table :test 'equal)))
-
-;;     (message "Initial templates: %S" templates)
-
-;;     ;; First, apply predefined mappings
-;;     (when (boundp 'genai-template-mapping)
-;;       (message "Using predefined mappings: %S" genai-template-mapping)
-;;       (dolist (mapping genai-template-mapping)
-;;         (let* ((key (car mapping))
-;;                (template-name (cdr mapping)))
-;;           (message "Processing mapping: %s -> %s" key template-name)
-;;           (when-let ((template (cl-find template-name templates
-;;                                       :key #'car
-;;                                       :test #'string=)))
-;;             (puthash key (car template) shortcuts)
-;;             (puthash (substring key 0 1) 1 counts)))))
-
-;;     ;; Then handle remaining templates
-;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
-;;     (message "Sorted templates: %S" templates)
-
-;;     (dolist (template templates)
-;;       (let* ((name (car template))
-;;              (suffix (cdr template))
-;;              (last-capital (if suffix
-;;                              (downcase suffix)
-;;                            (if (string-match "[A-Z]" name)
-;;                                (downcase (substring (match-string 0 name) 0 1))
-;;                              (downcase (substring name 0 1)))))
-;;              (count (gethash last-capital counts 0))
-;;              (new-key (if (= count 0)
-;;                          last-capital
-;;                        (format "%s%d" last-capital count))))
-
-;;         (message "Processing template: %s (capital: %s, count: %d, key: %s)"
-;;                 name last-capital count new-key)
-
-;;         (unless (gethash new-key shortcuts)
-;;           (puthash new-key name shortcuts)
-;;           (puthash last-capital (1+ count) counts))))
-
-;;     (message "Final shortcuts: %S" shortcuts)
-;;     shortcuts))
-
-;; ;; working but completion is split into shortcuts and tempalte name separately
-;; (cl-defun genai--create-shortcuts (templates)
-;;   "Generate shortcuts for templates using numbers for duplicates (e.g., s1, s2)."
-;;   (let ((shortcuts (make-hash-table :test 'equal))
-;;         (counts (make-hash-table :test 'equal))
-;;         (completion-alist nil))
-
-;;     (message "Initial templates: %S" templates)
-
-;;     ;; First, apply predefined mappings
-;;     (when (boundp 'genai-template-mapping)
-;;       (message "Using predefined mappings: %S" genai-template-mapping)
-;;       (dolist (mapping genai-template-mapping)
-;;         (let* ((key (car mapping))
-;;                (template-name (cdr mapping)))
-;;           (message "Processing mapping: %s -> %s" key template-name)
-;;           (when-let ((template (cl-find template-name templates
-;;                                       :key #'car
-;;                                       :test #'string=)))
-;;             (puthash key (car template) shortcuts)
-;;             (push (cons key (car template)) completion-alist)
-;;             (puthash (substring key 0 1) 1 counts)))))
-
-;;     ;; Then handle remaining templates
-;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
-;;     (message "Sorted templates: %S" templates)
-
-;;     (dolist (template templates)
-;;       (let* ((name (car template))
-;;              (suffix (cdr template))
-;;              (last-capital (if suffix
-;;                              (downcase suffix)
-;;                            (if (string-match "[A-Z]" name)
-;;                                (downcase (substring (match-string 0 name) 0 1))
-;;                              (downcase (substring name 0 1)))))
-;;              (count (gethash last-capital counts 0))
-;;              (new-key (if (= count 0)
-;;                          last-capital
-;;                        (format "%s%d" last-capital count))))
-
-;;         (message "Processing template: %s (capital: %s, count: %d, key: %s)"
-;;                 name last-capital count new-key)
-
-;;         (unless (gethash new-key shortcuts)
-;;           (puthash new-key name shortcuts)
-;;           (push (cons new-key name) completion-alist)
-;;           (push (cons name name) completion-alist)
-;;           (puthash last-capital (1+ count) counts))))
-
-;;     (message "Final shortcuts: %S" shortcuts)
-;;     (set-default 'genai--completion-alist completion-alist)
-;;     (setq genai--completion-function
-;;           (lambda (string pred action)
-;;             (if (eq action 'metadata)
-;;                 '(metadata (category . genai))
-;;               (complete-with-action action genai--completion-alist string pred))))
-;;     shortcuts))
-
-
-;; () formatting
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates using numbers for duplicates."
   (let ((shortcuts (make-hash-table :test 'equal))
@@ -500,8 +398,8 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
         (let* ((key (car mapping))
                (template-name (cdr mapping)))
           (when-let ((template (cl-find template-name templates
-                                      :key #'car
-                                      :test #'string=)))
+                                        :key #'car
+                                        :test #'string=)))
             (puthash key (car template) shortcuts)
             ;; Add combined format for completion
             (push (cons (format "%s - %s" key (car template)) (car template)) completion-alist)
@@ -515,14 +413,14 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
       (let* ((name (car template))
              (suffix (cdr template))
              (last-capital (if suffix
-                             (downcase suffix)
-                           (if (string-match "[A-Z]" name)
-                               (downcase (substring (match-string 0 name) 0 1))
-                             (downcase (substring name 0 1)))))
+                               (downcase suffix)
+                             (if (string-match "[A-Z]" name)
+                                 (downcase (substring (match-string 0 name) 0 1))
+                               (downcase (substring name 0 1)))))
              (count (gethash last-capital counts 0))
              (new-key (if (= count 0)
-                         last-capital
-                       (format "%s%d" last-capital count))))
+                          last-capital
+                        (format "%s%d" last-capital count))))
 
         (unless (gethash new-key shortcuts)
           (puthash new-key name shortcuts)
@@ -566,8 +464,8 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
           (let* ((base-key (downcase (substring template 0 1)))
                  (count (gethash base-key key-count 0))
                  (key (if (> count 0)
-                         (format "%s%d" base-key (1+ count))
-                       base-key)))
+                          (format "%s%d" base-key (1+ count))
+                        base-key)))
             (puthash base-key (1+ count) key-count)
             (puthash key template shortcuts)
             (push (format "(%s) %s" key template) prompt-parts))))
@@ -575,20 +473,16 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
       (setq prompt-parts (sort prompt-parts 'string<))
 
       (let* ((prompt (concat "Template or Manual Instruction:\n"
-                            (mapconcat 'identity prompt-parts " ")
-                            "\n"))
+                             (mapconcat 'identity prompt-parts " ")
+                             "\n"))
              (input (read-string prompt))
              (template-type (or (gethash input shortcuts)
-                              (if (string-blank-p input) "None" input))))
+                                (if (string-blank-p input) "None" input))))
 
         (unless (string= input "r")
           (display-buffer (get-buffer-create "*GenAI*")))
 
-        ;; Get last word if contains space
-        (if (string-match " " template-type)
-            (car (last (split-string template-type)))
-          template-type)))))
-        ;; template-type))))
+        template-type))))
 ;; (genai--select-template)
 
 
@@ -627,75 +521,103 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 (defun genai--parse-api-keys ()
   "Parse API keys from `genai-api-keys` and store them in `genai-api-keys-parsed`."
   (interactive)
-
-  ;; Check if the API keys string is not empty
   (unless (string-empty-p genai-api-keys)
     (let ((keys-list (split-string genai-api-keys ":")))
-      (setq genai-api-keys-parsed keys-list)
-      ;; (message "Parsed API Keys: %S" genai-api-keys-parsed)
-      )))
+      (setq genai-api-keys-parsed keys-list))))
+
+;; ;; working with text; but this limit the number of arguments
+;; (defun genai--construct-python-command (prompt)
+;;   "Construct complete command string for starting the GenAI Python process."
+;;   (interactive "sEnter prompt: ")
+
+;;   (genai--parse-api-keys)
+
+;;   (let* ((template-type (genai--select-template))
+;;          (prompt-arg (if (or (null prompt) (string-empty-p prompt))
+;;                          "''"
+;;                        (genai--safe-shell-quote-argument prompt)))
+
+;;          (command (format "%s \
+;;                            %s \
+;;                            %s \
+;;                            --engine %s \
+;;                            --max_tokens %s \
+;;                            --temperature %s \
+;;                            --human_history_path %s \
+;;                            --n_history %s \
+;;                            --template_type %s \
+;;                            --prompt %s"
+;;                           (genai--safe-shell-quote-argument genai-python-bin-path)
+;;                           (genai--safe-shell-quote-argument genai-python-script-path)
+;;                           (mapconcat
+;;                            (lambda (api-key)
+;;                              (concat "--api_key " (genai--safe-shell-quote-argument api-key)))
+;;                            genai-api-keys-parsed " ")
+;;                           (genai--safe-shell-quote-argument genai-engine)
+;;                           (genai--safe-shell-quote-argument genai-max-tokens)
+;;                           (genai--safe-shell-quote-argument genai-temperature)
+;;                           (genai--safe-shell-quote-argument genai-history-human-path)
+;;                           (genai--safe-shell-quote-argument genai-n-history)
+;;                           (genai--safe-shell-quote-argument template-type)
+;;                           prompt-arg)))
+
+;;     (genai--insert-prompt-template-type-and-engine prompt template-type)
+
+;;     command))
 
 (defun genai--construct-python-command (prompt)
-  "Construct complete command string for starting the GenAI Python process."
+  "Construct complete command string..."
   (interactive "sEnter prompt: ")
-
   (genai--parse-api-keys)
-
   (let* ((template-type (genai--select-template))
-         (prompt-arg (if (or (null prompt) (string-empty-p prompt))
-                         "''"
-                       (genai--safe-shell-quote-argument prompt)))
+         (tmp-prompt-file (make-temp-file "genai-prompt-" nil ".txt"))
+         (command nil))
 
-         (command (format "%s \
-                           %s \
-                           %s \
-                           --engine %s \
-                           --max_tokens %s \
-                           --temperature %s \
-                           --human_history_path %s \
-                           --n_history %s \
-                           --template_type %s \
-                           --prompt %s"
-                          (genai--safe-shell-quote-argument genai-python-bin-path)
-                          (genai--safe-shell-quote-argument genai-python-script-path)
-                          (mapconcat
-                           (lambda (api-key)
-                             (concat "--api_key " (genai--safe-shell-quote-argument api-key)))
-                           genai-api-keys-parsed " ")
-                          (genai--safe-shell-quote-argument genai-engine)
-                          (genai--safe-shell-quote-argument genai-max-tokens)
-                          (genai--safe-shell-quote-argument genai-temperature)
-                          (genai--safe-shell-quote-argument genai-history-human-path)
-                          (genai--safe-shell-quote-argument genai-n-history)
-                          (genai--safe-shell-quote-argument template-type)
-                          prompt-arg)))
+    (unwind-protect
+        (progn
+          ;; Write to file using with-temp-file to handle file operations safely
+          (with-temp-file tmp-prompt-file
+            (insert prompt))
 
-    (genai--insert-prompt-template-type-and-engine prompt template-type)
+          (setq command
+                (format "%s %s %s --engine %s --max_tokens %s --temperature %s --human_history_path %s --n_history %s --template_type %s --prompt_file %s"
+                        (genai--safe-shell-quote-argument genai-python-bin-path)
+                        (genai--safe-shell-quote-argument genai-python-script-path)
+                        (mapconcat (lambda (api-key)
+                                     (concat "--api_key " (genai--safe-shell-quote-argument api-key)))
+                                   genai-api-keys-parsed " ")
+                        (genai--safe-shell-quote-argument genai-engine)
+                        (genai--safe-shell-quote-argument genai-max-tokens)
+                        (genai--safe-shell-quote-argument genai-temperature)
+                        (genai--safe-shell-quote-argument genai-history-human-path)
+                        (genai--safe-shell-quote-argument genai-n-history)
+                        (genai--safe-shell-quote-argument template-type)
+                        (genai--safe-shell-quote-argument tmp-prompt-file))))
 
-    command))
-
+      (genai--insert-prompt-template-type-and-engine prompt template-type)
+      command)))
 
 ;;;###autoload
 (defun genai-show-history (&optional num-interactions)
   "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
-  (interactive "sEnter the number of latest interactions (default: 1024): ")
+  (interactive "sEnter the number of latest interactions (default: 64): ")
   (let* ((genai-all-history-buffer (get-buffer-create "*GenAI All History*"))
          (num-interactions (cond
-                          ((null num-interactions) 1024)
-                          ((numberp num-interactions) (number-to-string num-interactions))
-                          ((stringp num-interactions) (if (string-empty-p num-interactions)
-                                                        "1024"
-                                                        num-interactions))
-                          (t "1024"))))
+                            ((null num-interactions) "128")
+                            ((numberp num-interactions) (number-to-string num-interactions))
+                            ((stringp num-interactions) (if (string-empty-p num-interactions)
+                                                            "1024"
+                                                          num-interactions))
+                            (t "1024"))))
     (with-current-buffer genai-all-history-buffer
       (erase-buffer))
 
     (display-buffer genai-all-history-buffer)
 
     (let ((command-list (list genai-python-bin-path
-                             genai-python-script-path-show-history
-                             "--human_history_path" genai-history-human-path
-                             "--n_interactions" num-interactions)))
+                              genai-python-script-path-show-history
+                              "--human_history_path" genai-history-human-path
+                              "--n_interactions" num-interactions)))
       (make-process
        :name "genai-show-history"
        :buffer genai-all-history-buffer
@@ -704,6 +626,9 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                    (when (string= event "finished\n")
                      (with-current-buffer genai-all-history-buffer
                        (goto-char (point-min))
+                       (when (search-forward genai--splitter nil t)
+                         (goto-char (match-beginning 0))
+                         (delete-region (point) (point-max)))
                        (genai--scroll-history)
                        (markdown-mode))))))
     (message "Loading history to *GenAI All History* buffer...")))
@@ -747,18 +672,18 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (let ((font-lock-mode nil))
         (setq genai--spinner-timer
               (run-with-timer 0 0.1
-                             (lambda ()
-                               (with-current-buffer "*GenAI*"
-                                 (save-excursion
-                                   (goto-char genai--fixed-spinner-position)
-                                   (let ((inhibit-read-only t))
-                                     (delete-region (point) (line-end-position))
-                                     (insert (propertize
-                                            (nth genai--spinner-index genai--spinner-frames)
-                                            'face '(:foreground "blue")))
-                                     (setq genai--spinner-index
-                                           (mod (1+ genai--spinner-index)
-                                                (length genai--spinner-frames)))))))))))))
+                              (lambda ()
+                                (with-current-buffer "*GenAI*"
+                                  (save-excursion
+                                    (goto-char genai--fixed-spinner-position)
+                                    (let ((inhibit-read-only t))
+                                      (delete-region (point) (line-end-position))
+                                      (insert (propertize
+                                               (nth genai--spinner-index genai--spinner-frames)
+                                               'face '(:foreground "blue")))
+                                      (setq genai--spinner-index
+                                            (mod (1+ genai--spinner-index)
+                                                 (length genai--spinner-frames)))))))))))))
 
 (defun genai--stop-spinner ()
   "Stop the spinner animation."
@@ -785,12 +710,10 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   "Custom sentinel for the GenAI process."
   (cond
    ((string-match-p "finished\\|exited" msg)
-    (progress-reporter-done genai--progress-reporter)
     (genai--stop-spinner)
     (message "GenAI process finished.")
     (genai--clean-up-all))
    ((string-match-p "error" msg)
-    (progress-reporter-done genai--progress-reporter)
     (genai--stop-spinner)
     (message "GenAI process encountered an error: %s" msg))
    (t
@@ -801,14 +724,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
   (genai--clean-up-output)
   )
 
-(cl-defun genai--update-progress ()
-  "Update the progress reporter."
-  (when genai--progress-reporter
-    (progress-reporter-update genai--progress-reporter (random 100))
-    (when (process-live-p genai--process)
-      (run-with-timer 0.5 nil #'genai--update-progress))))
 
-;; Update start-python-process
 (cl-defun genai--start-python-process (prompt)
   "Start the GenAI process with the given PROMPT using a shell command."
   (interactive "sEnter prompt: ")
@@ -820,8 +736,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
          (process (start-process-shell-command "genai--process" "*GenAI*" command)))
     (setq genai--process process)
     (set-process-sentinel process #'genai--process-sentinel)
-    (setq genai--progress-reporter (make-progress-reporter "GenAI Processing..." 0 100))
-    (genai--update-progress)
     (genai--start-spinner)
     process))
 
@@ -833,7 +747,16 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (interrupt-process genai--process)
     (message "GenAI process interrupted.")))
 
-(cl-defun genai--clean-up-output ()
+(defun genai--trim-buffer ()
+  "Trim *GenAI* buffer to keep only the last genai-buffer-max-lines lines."
+  (with-current-buffer "*GenAI*"
+    (save-excursion
+      (goto-char (point-max))
+      (forward-line (- genai-buffer-max-lines))
+      (when (> (point) (point-min))
+        (delete-region (point-min) (point))))))
+
+(defun genai--clean-up-output ()
   "Remove ANSI escape codes and specific unwanted messages from the *GenAI* buffer."
   (interactive)
   (with-current-buffer (get-buffer-create "*GenAI*")
@@ -841,23 +764,27 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (save-excursion
       (goto-char (point-min))
       (while (search-forward-regexp "\x1b\\[\\([0-9;]*\\)m" nil t)
-        (replace-match "")))))
+        (replace-match "")))
+    (genai--trim-buffer)))
 
+;;;###autoload
 (cl-defun genai--run (prompt)
   "Run GenAI command with prompt."
   (interactive)
-  (if (equal prompt "g")
-      (progn
-        (switch-to-buffer-other-window "*GenAI*")
-        (keyboard-quit)
-        (message "Jump to the \"*GenAI*\" buffer"))
+  (cond ((equal prompt "g")
+         (switch-to-buffer-other-window "*GenAI*")
+         (keyboard-quit)
+         (message "Jump to the \"*GenAI*\" buffer"))
 
-    (with-current-buffer (get-buffer-create "*GenAI*")
-      ;; (goto-char (point-max))
-      (font-lock-ensure)
-      (message "GenAI: Running...")
-      (genai--start-python-process prompt))))
+        ((equal prompt "h")
+         (genai-show-history)
+         (keyboard-quit))
 
+        (t
+         (with-current-buffer (get-buffer-create "*GenAI*")
+           (font-lock-ensure)
+           (message "GenAI: Running...")
+           (genai--start-python-process prompt)))))
 
 ;;;###autoload
 (defun genai-on-region ()
@@ -882,12 +809,8 @@ The response will be displayed in the *GenAI* buffer."
     (when (use-region-p)
       (deactivate-mark))
 
-    ;; Run the Gen AI
-    (genai--run region-text)
-
-    ;; Display the output to the *GenAI* buffer
-    ;; (display-buffer buffer)
-    ))
+    ;; Run GenAI
+    (genai--run region-text)))
 
 
 (cl-defun genai--scroll ()

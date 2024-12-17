@@ -1,7 +1,7 @@
 <!-- ---
-!-- title: Sciwrite-3-methods.md
+!-- title: ./genai/templates/SciWriteMethods.md
 !-- author: ywatanabe
-!-- date: 2024-11-04 14:31:18
+!-- date: 2024-11-19 22:10:54
 !-- --- -->
 
 
@@ -39,6 +39,18 @@ The purpose of the methods section in a scientific paper is to provide a detaile
   - Pay careful attention to the use of hyphens, en dashes, em dashes, and minus signs.
   - Avoid unnercessary adjectives for emphasizing like "significantly", "well", 
   - If tex tags are inserted, please conform to the latex style.
+
+- For convenience in selection, Return as pseudo code block with triplet indicator like this:
+  \`\`\` sciwrite-methods
+  YOUR REVISION
+  \`\`\`
+
+- Methods should be written with a focus on reproducible procedures. 
+- Unnecessary expressions should be avoided. 
+- Passive sentences should be used to indicate that the study can be reproduced by anyone.
+- Use LaTeX format
+- When adding references (to literature, tables, or figures) will enhance the quality of the paper, please insert a placeholder using this LaTeX command `\hlref{XXX}`. This command will highlight any unlinked content so that it will work well as a placeholder.
+
 
 Now, the template is as follows:
 ------------------
