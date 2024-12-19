@@ -1,7 +1,7 @@
 ;;; -*- lexical-binding: t -*-
-;;; Author: 2024-12-18 07:59:51
-;;; Time-stamp: <2024-12-18 07:59:51 (ywatanabe)>
-;;; File: ./genai/genai.el
+;;; Author: 2024-12-20 07:17:11
+;;; Time-stamp: <2024-12-20 07:17:11 (ywatanabe)>
+;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.el
 
 
 ;; Copyright (C) 2024 Yusuke Watanabe
@@ -786,31 +786,73 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
            (message "GenAI: Running...")
            (genai--start-python-process prompt)))))
 
+(defun genai--dired-get-contents ()
+  "Get contents of marked files or file at point in dired."
+  (let* ((files (or (dired-get-marked-files)
+                    (list (dired-get-filename))))
+         (contents ""))
+    (dolist (file files)
+      (when (file-regular-p file)
+        (setq contents
+              (concat contents
+                      (format "\n;; %s\n" (file-name-nondirectory file))
+                      (with-temp-buffer
+                        (insert-file-contents file)
+                        (buffer-string))))))
+    contents))
+
 ;;;###autoload
 (defun genai-on-region ()
-  "Run GenAI command on selected region or prompt for input.
+  "Run GenAI command on selected region, dired files or prompt.
 If a region is selected, use that text as the prompt.
+If in dired-mode with marked files, concatenate their contents.
 Otherwise, prompt the user to enter a prompt.
 The response will be displayed in the *GenAI* buffer."
   (interactive)
   (genai--init)
   (genai--ensure-dependencies)
-  (let* ((region-text (if (use-region-p)
-                          (buffer-substring-no-properties (region-beginning) (region-end))
-                        (read-string "Enter prompt: " "")))
+  (let* ((region-text
+          (cond
+           ((use-region-p)
+            (buffer-substring-no-properties (region-beginning) (region-end)))
+           ((eq major-mode 'dired-mode)
+            (genai--dired-get-contents))
+           (t
+            (read-string "Enter prompt: " ""))))
          (buffer (get-buffer-create "*GenAI*")))
-
-    ;; Prepare the buffer for output
     (with-current-buffer buffer
       (unless (eq major-mode 'genai-mode)
         (genai-mode)))
-
-    ;; Here, disable text selection (region) if exist
     (when (use-region-p)
       (deactivate-mark))
-
-    ;; Run GenAI
     (genai--run region-text)))
+
+;; ;;;###autoload
+;; (defun genai-on-region ()
+;;   "Run GenAI command on selected region or prompt for input.
+;; If a region is selected, use that text as the prompt.
+;; Otherwise, prompt the user to enter a prompt.
+;; The response will be displayed in the *GenAI* buffer."
+;;   (interactive)
+;;   (genai--init)
+;;   (genai--ensure-dependencies)
+;;   (let* ((region-text (if (use-region-p)
+;;                           (buffer-substring-no-properties (region-beginning) (region-end))
+;;                         (read-string "Enter prompt: " "")))
+;;          (buffer (get-buffer-create "*GenAI*")))
+
+;;     ;; Prepare the buffer for output
+;;     (with-current-buffer buffer
+;;       (unless (eq major-mode 'genai-mode)
+;;         (genai-mode)))
+
+;;     ;; Here, disable text selection (region) if exist
+;;     (when (use-region-p)
+;;       (deactivate-mark))
+
+;;     ;; Run GenAI
+;;     (genai--run region-text)))
+
 
 
 (cl-defun genai--scroll ()
