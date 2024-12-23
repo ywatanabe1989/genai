@@ -1,10 +1,12 @@
+;;; genai.el --- Interactive LLM Interface for Emacs  -*- lexical-binding: t; -*-
+
 ;; Copyright (C) 2024 Yusuke Watanabe
 
 ;; Author: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
 ;; Maintainer: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
 ;; Created: 7 Jul 2024
 ;; URL: https://github.com/ywatanabe1989/genai
-;; Version: 1.0
+;; Version: 1.3
 ;; License: GNU General Public License (GPL) version 3
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 ;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6") (pulse "1.0") (async "1.9.4"))
