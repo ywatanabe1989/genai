@@ -1,15 +1,26 @@
 <!-- ---
-!-- title: 2024-12-20 07:39:41
-!-- author: Yusuke Watanabe
+!-- title: 2024-12-23 14:33:19
+!-- author: ywata-note-win
 !-- date: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/README.md
 !-- --- -->
 
+# GenAI.el
 
-# Emacs client for LLM
+An Emacs interface for interacting with Large Language Models (LLMs) like ChatGPT, Gemini, Claude, and Llama.
+
+## Features
+
+- Send queries from selected region, selected file in dired mode, or manual input 
+- Customizable prompt templates for prompting
+- Code block navigation and auto-copying
+- Conversation history tracking 
+- Streaming response display
+- Markdown formatting support
+
 
 ## Installation
 ```bash
-EMACS_GENAI_DIR=$HOME/.emacs.d/lisp/emacs-genai/
+EMACS_GENAI_DIR=$HOME/.emacs.d/lisp/emacs-genai/ # Adjust this
 git clone git@github.com:ywatanabe1989/emacs-genai.git $EMACS_GENAI_DIR
 ```
 
@@ -18,11 +29,11 @@ git clone git@github.com:ywatanabe1989/emacs-genai.git $EMACS_GENAI_DIR
 
 ## Dependencies
 ```bash
-pip install mngs
+pip install "mngs==1.9.8"
 ```
 
 ## Functions
-- `M-x genai-on-region`: Process selected text as prompt for LLM
+- `M-x genai-on-region`: Process selected text or selected files in the dired mode as prompt for LLM
 - `M-x genai-show-history`: Display conversation history
 - `M-x genai-backup-history`: Backup and reset conversation history
 
@@ -62,7 +73,7 @@ pip install mngs
 ```
 
 ## Templates
-Place templates in `$HOME/.emacs.d/lisp/genai/templates/*.md`. First uppercase letter becomes the shortcut key. Use "PLACEHOLDER" to mark input position. Examples are available under ['./templates'](./templates).
+Place templates in `$EMACS_GENAI_DIR/templates/*.md`. File name, the first uppercase letter, becomes the shortcut key in default. Use "PLACEHOLDER" to control manual prompt placement. Examples are available under ['./templates'](./templates).
 
 ## Contact
 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
