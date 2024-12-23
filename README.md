@@ -1,7 +1,7 @@
 <!-- ---
-!-- title: ./genai/README.md
-!-- author: ywatanabe
-!-- date: 2024-11-14 18:18:28
+!-- title: 2024-12-20 07:39:41
+!-- author: Yusuke Watanabe
+!-- date: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/README.md
 !-- --- -->
 
 

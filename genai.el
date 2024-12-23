@@ -1,8 +1,4 @@
-;;; -*- lexical-binding: t -*-
-;;; Author: 2024-12-20 07:17:11
-;;; Time-stamp: <2024-12-20 07:17:11 (ywatanabe)>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.el
-
+;;; genai.el --- Emacs client for large language models  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2024 Yusuke Watanabe
 
@@ -13,7 +9,7 @@
 ;; Version: 1.0
 ;; License: GNU General Public License (GPL) version 3
 ;; SPDX-License-Identifier: GPL-3.0-or-later
-;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6") (pulse "1.0"))
+;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6") (pulse "1.0") (async "1.9.4"))
 
 ;; Keywords: tools, LLM, template
 
@@ -98,12 +94,27 @@
 ;; (define-key global-map (kbd "C-M-g") 'genai-on-region)
 
 
+;; ⸺ Package and license:
+;; - Please specify `:fetcher` before `:repo` in your recipe
+;; - genai.el -- no packaging header
+;; - Reminder: ensure GitHub release v1.2 is up-to-date with your current code and `Package-Version`
+;; - pkg/genai.el: GNU General Public License v3.0 or later
+;; - Repository: GNU General Public License v3.0
+;; make: *** [Makefile:8: run] Error 2
+;; make: Leaving directory '/home/runner/melpazoid'
+
 
 ;;; Code:
 (require 'markdown-mode)
 (require 'cl-lib)
 (require 'async)
 (require 'ansi-color)
+;; `#'load`-check on each file:
+;; ```
+;; Loading genai.el
+;; genai.el:Error: Emacs 29.4:
+;; (file-missing "Cannot open load file" "No such file or directory" "async")
+;; ```
 
 (defvar genai-dependencies-checked nil
   "Whether Python dependencies have been checked.")
@@ -220,13 +231,22 @@
 (defvar-local genai-input-marker nil
   "Marker for the input position in GenAI buffer.")
 
+
 (defvar genai-template-mapping nil
   "Mapping between shortcuts and their corresponding readme files.
 Example: Template shortcuts can be customized as:
-  '((\"p\" . \"Program\")              ; p -> Program.md
-    (\"e\" . \"Email\")                ; e -> Email.md
-    (\"c\" . \"Correct\")              ; c -> Correct.md
-    (\"my\" . \"MyAwesomeTemplate\"))  ; my -> MyAwesomeTemplate.md")
+\\=((\"p\" . \"Program\")              ; p -> Program.md
+(\"e\" . \"Email\")                ; e -> Email.md
+(\"c\" . \"Correct\")              ; c -> Correct.md
+(\"my\" . \"MyAwesomeTemplate\"))  ; my -> MyAwesomeTemplate.md")
+
+;; (defvar genai-template-mapping nil
+;;   "Mapping between shortcuts and their corresponding readme files.
+;; Example: Template shortcuts can be customized as:
+;;   '((\"p\" . \"Program\")              ; p -> Program.md
+;;     (\"e\" . \"Email\")                ; e -> Email.md
+;;     (\"c\" . \"Correct\")              ; c -> Correct.md
+;;     (\"my\" . \"MyAwesomeTemplate\"))  ; my -> MyAwesomeTemplate.md")
 
 (defcustom genai-buffer-max-lines 1024
   "Maximum number of lines to keep in *GenAI* buffer."
@@ -363,10 +383,7 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
 ;;               files))))
 
 (cl-defun genai--fetch-templates (dir)
-  "Return list of formatted template names from DIR that contain capital letters.
-For template starting with capital (e.g., Program.md) returns just the name.
-For template with internal capital (e.g., parapHrase.md) returns 'h parapHrase'.
-Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\" \"Visa\" \"SciWrite\" \"Remember\" \"Program\" \"Email\" \"Correct\" \"Alternative\")"
+  "Return list of formatted template names from DIR that contain capital letters."
   (interactive)
   (when (file-exists-p dir)
     (sort
@@ -384,14 +401,69 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
                         (t nil))))
                    (directory-files dir nil ".*[A-Z].*\\.md$")))
      #'string<)))
+
+;; In genai--create-shortcuts:
+;; ~/.dotfiles/.emacs.d/lisp/genai/genai.el:447:44: Warning: reference to free variable ‘genai--completion-alist’
+;; ~/.dotfiles/.emacs.d/lisp/genai/genai.el:443:11: Warning: assignment to free variable ‘genai--completion-function’
+
 ;; (genai--fetch-templates "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates")
+
+;; (cl-defun genai--create-shortcuts (templates)
+;;   "Generate shortcuts for templates using numbers for duplicates."
+;;   (let ((shortcuts (make-hash-table :test 'equal))
+;;         (counts (make-hash-table :test 'equal))
+;;         (completion-alist nil))
+
+;;     ;; Apply predefined mappings first
+;;     (when (boundp 'genai-template-mapping)
+;;       (dolist (mapping genai-template-mapping)
+;;         (let* ((key (car mapping))
+;;                (template-name (cdr mapping)))
+;;           (when-let ((template (cl-find template-name templates
+;;                                         :key #'car
+;;                                         :test #'string=)))
+;;             (puthash key (car template) shortcuts)
+;;             ;; Add combined format for completion
+;;             (push (cons (format "%s - %s" key (car template)) (car template)) completion-alist)
+;;             ;; (push (cons new-key name) completion-alist)
+;;             (puthash (substring key 0 1) 1 counts)))))
+
+;;     ;; Handle remaining templates
+;;     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
+
+;;     (dolist (template templates)
+;;       (let* ((name (car template))
+;;              (suffix (cdr template))
+;;              (last-capital (if suffix
+;;                                (downcase suffix)
+;;                              (if (string-match "[A-Z]" name)
+;;                                  (downcase (substring (match-string 0 name) 0 1))
+;;                                (downcase (substring name 0 1)))))
+;;              (count (gethash last-capital counts 0))
+;;              (new-key (if (= count 0)
+;;                           last-capital
+;;                         (format "%s%d" last-capital count))))
+
+;;         (unless (gethash new-key shortcuts)
+;;           (puthash new-key name shortcuts)
+;;           ;; Add combined format for completion
+;;           (push (cons (format "%s - %s" new-key name) name) completion-alist)
+;;           (puthash last-capital (1+ count) counts))))
+
+;;     (set-default 'genai--completion-alist completion-alist)
+;;     (setq genai--completion-function
+;;           (lambda (string pred action)
+;;             (if (eq action 'metadata)
+;;                 '(metadata (category . genai))
+;;               (complete-with-action action genai--completion-alist string pred))))
+;;     shortcuts))
+
 
 (cl-defun genai--create-shortcuts (templates)
   "Generate shortcuts for templates using numbers for duplicates."
   (let ((shortcuts (make-hash-table :test 'equal))
         (counts (make-hash-table :test 'equal))
         (completion-alist nil))
-
     ;; Apply predefined mappings first
     (when (boundp 'genai-template-mapping)
       (dolist (mapping genai-template-mapping)
@@ -403,12 +475,9 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
             (puthash key (car template) shortcuts)
             ;; Add combined format for completion
             (push (cons (format "%s - %s" key (car template)) (car template)) completion-alist)
-            ;; (push (cons new-key name) completion-alist)
             (puthash (substring key 0 1) 1 counts)))))
-
     ;; Handle remaining templates
     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
-
     (dolist (template templates)
       (let* ((name (car template))
              (suffix (cdr template))
@@ -421,20 +490,21 @@ Example: (genai--fetch-templates \"templates/\") => (\"t prinT\" \"h parapHrase\
              (new-key (if (= count 0)
                           last-capital
                         (format "%s%d" last-capital count))))
-
         (unless (gethash new-key shortcuts)
           (puthash new-key name shortcuts)
           ;; Add combined format for completion
           (push (cons (format "%s - %s" new-key name) name) completion-alist)
           (puthash last-capital (1+ count) counts))))
-
-    (set-default 'genai--completion-alist completion-alist)
+    (defvar genai--completion-alist nil)
+    (setq-default genai--completion-alist completion-alist)
+    (defvar genai--completion-function nil)
     (setq genai--completion-function
           (lambda (string pred action)
             (if (eq action 'metadata)
                 '(metadata (category . genai))
               (complete-with-action action genai--completion-alist string pred))))
     shortcuts))
+
 ;; (genai--create-shortcuts)
 
 (cl-defun genai--select-template ()
@@ -597,9 +667,47 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (genai--insert-prompt-template-type-and-engine prompt template-type)
       command)))
 
+;; ~/.dotfiles/.emacs.d/lisp/genai/genai.el:695:27: Warning: Unused lexical argument `process'
+
+;; ;;;###autoload
+;; (defun genai-show-history (&optional num-interactions)
+;;   "Show NUM-INTERACTIONS lines of chat history in a temporary buffer."
+;;   (interactive "sEnter the number of latest interactions (default: 64): ")
+;;   (let* ((genai-all-history-buffer (get-buffer-create "*GenAI All History*"))
+;;          (num-interactions (cond
+;;                             ((null num-interactions) "128")
+;;                             ((numberp num-interactions) (number-to-string num-interactions))
+;;                             ((stringp num-interactions) (if (string-empty-p num-interactions)
+;;                                                             "1024"
+;;                                                           num-interactions))
+;;                             (t "1024"))))
+;;     (with-current-buffer genai-all-history-buffer
+;;       (erase-buffer))
+
+;;     (display-buffer genai-all-history-buffer)
+
+;;     (let ((command-list (list genai-python-bin-path
+;;                               genai-python-script-path-show-history
+;;                               "--human_history_path" genai-history-human-path
+;;                               "--n_interactions" num-interactions)))
+;;       (make-process
+;;        :name "genai-show-history"
+;;        :buffer genai-all-history-buffer
+;;        :command command-list
+;;        :sentinel (lambda (process event)
+;;                    (when (string= event "finished\n")
+;;                      (with-current-buffer genai-all-history-buffer
+;;                        (goto-char (point-min))
+;;                        (when (search-forward genai--splitter nil t)
+;;                          (goto-char (match-beginning 0))
+;;                          (delete-region (point) (point-max)))
+;;                        (genai--scroll-history)
+;;                        (markdown-mode))))))
+;;     (message "Loading history to *GenAI All History* buffer...")))
+
 ;;;###autoload
 (defun genai-show-history (&optional num-interactions)
-  "Show the GenAI history in a temporary buffer. NUM-INTERACTIONS limits the number of interactions shown."
+  "Show NUM-INTERACTIONS lines of chat history in a temporary buffer."
   (interactive "sEnter the number of latest interactions (default: 64): ")
   (let* ((genai-all-history-buffer (get-buffer-create "*GenAI All History*"))
          (num-interactions (cond
@@ -611,9 +719,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                             (t "1024"))))
     (with-current-buffer genai-all-history-buffer
       (erase-buffer))
-
     (display-buffer genai-all-history-buffer)
-
     (let ((command-list (list genai-python-bin-path
                               genai-python-script-path-show-history
                               "--human_history_path" genai-history-human-path
@@ -622,7 +728,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
        :name "genai-show-history"
        :buffer genai-all-history-buffer
        :command command-list
-       :sentinel (lambda (process event)
+       :sentinel (lambda (_process event)
                    (when (string= event "finished\n")
                      (with-current-buffer genai-all-history-buffer
                        (goto-char (point-min))
@@ -786,20 +892,38 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
            (message "GenAI: Running...")
            (genai--start-python-process prompt)))))
 
+;; (defun genai--dired-get-contents ()
+;;   "Get contents of marked files or file at point in dired."
+;;   (let* ((files (or (dired-get-marked-files)
+;;                     (list (dired-get-filename))))
+;;          (contents ""))
+;;     (dolist (file files)
+;;       (when (file-regular-p file)
+;;         (setq contents
+;;               (concat contents
+;;                       (format "\n;; %s\n" (file-name-nondirectory file))
+;;                       (with-temp-buffer
+;;                         (insert-file-contents file)
+;;                         (buffer-string))))))
+;;     contents))
+
+
 (defun genai--dired-get-contents ()
   "Get contents of marked files or file at point in dired."
-  (let* ((files (or (dired-get-marked-files)
-                    (list (dired-get-filename))))
+  (let* ((files (dired-get-marked-files nil nil nil t))
          (contents ""))
-    (dolist (file files)
-      (when (file-regular-p file)
-        (setq contents
-              (concat contents
-                      (format "\n;; %s\n" (file-name-nondirectory file))
-                      (with-temp-buffer
-                        (insert-file-contents file)
-                        (buffer-string))))))
-    contents))
+    (if (equal files '(nil))
+        (read-string "Enter prompt: " "")
+      (dolist (file files)
+        (when (file-regular-p file)
+          (setq contents
+                (concat contents
+                        (format "\n;; %s\n" (file-name-nondirectory file))
+                        (with-temp-buffer
+                          (insert-file-contents file)
+                          (buffer-string))))))
+      contents)))
+
 
 ;;;###autoload
 (defun genai-on-region ()
@@ -983,6 +1107,3 @@ The response will be displayed in the *GenAI* buffer."
 (provide 'genai)
 
 ;;; genai.el ends here
-
-
-(message "%s was loaded." (file-name-nondirectory (or load-file-name buffer-file-name)))
