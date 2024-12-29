@@ -1,4 +1,7 @@
-;;; genai.el --- Interactive LLM Interface for Emacs  -*- lexical-binding: t; -*-
+;;; -*- lexical-binding: t -*-
+;;; Author: 2024-12-29 17:28:48
+;;; Time-stamp: <2024-12-29 17:28:48 (ywatanabe)>
+;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.el
 
 ;; Copyright (C) 2024 Yusuke Watanabe
 
@@ -160,6 +163,9 @@
   "Path to the history file used by genai.el."
   :type 'string)
 
+(defvar genai-llm-provider ""
+  "Switcher for GenAI provider.")
+
 (defcustom genai-api-keys ""
   "A string containing GenAI API keys, separated by commas."
   :type 'string
@@ -234,6 +240,19 @@ Example: Template shortcuts can be customized as:
   "Maximum number of lines to keep in *GenAI* buffer."
   :type 'integer
   :group 'genai)
+
+;;;###autoload
+(defun genai-switch-llm-provider (provider)
+  "Switch the GenAI provider."
+  (interactive
+   (list (completing-read "Select GenAI provider: "
+                          '("anthropic" "google" "deepseek" "openai")
+                          nil t)))
+  (setq genai-llm-provider provider)
+  (message (format "%s_API_KEYS" (upcase provider)))
+  (setq genai-api-keys (getenv (format "%s_API_KEYS" (upcase provider))))
+  (setq genai-engine (getenv (format "%s_ENGINE" (upcase provider))))
+  (message "Switched GenAI provider to: %s" provider))
 
 (defun genai-send-buffer-input ()
   "Send text from the last separator as input to GenAI."
@@ -619,7 +638,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (message "GenAI process: %s" msg))))
 
 (cl-defun genai--clean-up-all ()
-  (interactive)
   (genai--clean-up-output))
 
 (cl-defun genai--start-python-process (prompt)
@@ -681,36 +699,48 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
            (message "GenAI: Running...")
            (genai--start-python-process prompt)))))
 
+
 ;; (defun genai--dired-get-contents ()
 ;;   "Get contents of marked files or file at point in dired."
-;;   (let* ((files (or (dired-get-marked-files)
-;;                     (list (dired-get-filename))))
+;;   (let* ((files (dired-get-marked-files nil nil nil t))
 ;;          (contents ""))
-;;     (dolist (file files)
-;;       (when (file-regular-p file)
-;;         (setq contents
-;;               (concat contents
-;;                       (format "\n;; %s\n" (file-name-nondirectory file))
-;;                       (with-temp-buffer
-;;                         (insert-file-contents file)
-;;                         (buffer-string))))))
-;;     contents))
-
+;;     (if (equal files '(nil))
+;;         (read-string "Enter prompt: " "")
+;;       (dolist (file files)
+;;         (when (file-regular-p file)
+;;           (setq contents
+;;                 (concat contents
+;;                         (format "\n;; %s\n" (file-name-nondirectory file))
+;;                         (with-temp-buffer
+;;                           (insert-file-contents file)
+;;                           (buffer-string))))))
+;;       contents)))
 
 (defun genai--dired-get-contents ()
-  "Get contents of marked files or file at point in dired."
-  (let* ((files (dired-get-marked-files nil nil nil t))
+  "Get contents of marked files recursively, handling only safe files."
+  (let* ((files (dired-get-marked-files nil nil nil nil))
+         (safe-extensions '(".el" ".py" ".sh" ".txt" ".md" ".org" ".yml" ".yaml" ".json"))
+         (size-limit (* 1024 1024))
          (contents ""))
-    (if (equal files '(nil))
+    (if (null files)
         (read-string "Enter prompt: " "")
-      (dolist (file files)
-        (when (file-regular-p file)
-          (setq contents
-                (concat contents
-                        (format "\n;; %s\n" (file-name-nondirectory file))
-                        (with-temp-buffer
-                          (insert-file-contents file)
-                          (buffer-string))))))
+      (cl-labels ((process-file
+                    (file)
+                    (cond
+                     ((file-directory-p file)
+                      (dolist (f (directory-files file t "^[^.]"))
+                        (process-file f)))
+                     ((and (file-regular-p file)
+                           (member (file-name-extension file t) safe-extensions)
+                           (< (file-attribute-size (file-attributes file)) size-limit))
+                      (setq contents
+                            (concat contents
+                                    (format "\n;; %s\n" (file-relative-name file))
+                                    (with-temp-buffer
+                                      (insert-file-contents file)
+                                      (buffer-string))))))))
+        (dolist (file files)
+          (process-file file)))
       contents)))
 
 
@@ -779,7 +809,6 @@ The response will be displayed in the *GenAI* buffer."
 ;;;###autoload
 (defun genai-copy-last ()
   "Copy the last LLM output into kill ring"
-  (interactive)
   (if-let ((genai-buffer (get-buffer "*GenAI*")))
       (with-current-buffer genai-buffer
         (goto-char (point-max))
@@ -790,7 +819,6 @@ The response will be displayed in the *GenAI* buffer."
 ;;;###autoload
 (defun genai-copy-code-blocks ()
   "Copy code blocks in the last LLM output into kill ring"
-  (interactive)
   (with-current-buffer (get-buffer "*GenAI*")
     (goto-char (point-max))
     (let ((count nil)
@@ -813,7 +841,6 @@ The response will be displayed in the *GenAI* buffer."
 ;;;###autoload
 (defun genai-next-code-block ()
   "Navigate to the next code block and select the content"
-  (interactive)
   (with-current-buffer "*GenAI*"
     (end-of-line)
     (when (looking-at-p genai--code-block-end-delimiter)
@@ -834,7 +861,6 @@ The response will be displayed in the *GenAI* buffer."
 ;;;###autoload
 (defun genai-previous-code-block ()
   "Navigate to the previous code block and select the content"
-  (interactive)
   (with-current-buffer "*GenAI*"
 
     ;; Find the previous code block end delimiter
@@ -863,3 +889,5 @@ The response will be displayed in the *GenAI* buffer."
 (provide 'genai)
 
 ;;; genai.el ends here
+
+(message "%s was loaded." (file-name-nondirectory (or load-file-name buffer-file-name)))

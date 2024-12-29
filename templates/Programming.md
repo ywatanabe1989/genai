@@ -1,9 +1,8 @@
 <!-- ---
-!-- title: ./genai/templates/Programming.md
-!-- author: ywatanabe
-!-- date: 2024-12-08 09:24:09
+!-- title: 2024-12-25 08:22:46
+!-- author: ywata-note-win
+!-- date: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/Programming.md
 !-- --- -->
-
 
 ----------
 Background
@@ -320,7 +319,18 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 # For Elisp Code
 ################################################################################
 - Please ensure the number and locations of parentheses are correct.
-- Please ensure the number and locations of parentheses are correct.
+- This is an example elisp code. Please use this docstring style:
+  ```elisp
+  (defun elmo-load-json-file (json-path)
+    "Load JSON file at JSON-PATH by converting to markdown first.
+
+  Example:
+    (elmo-load-json-file \"~/.emacs.d/elmo/prompts/example.json\")
+    ;; => Returns markdown content from converted JSON"
+    (let ((md-path (concat (file-name-sans-extension json-path) ".md")))
+      (when (elmo-json-to-markdown json-path)
+        (elmo-load-markdown-file md-path))))
+  ```
 
 ----------
 Now, my input is as follows:
