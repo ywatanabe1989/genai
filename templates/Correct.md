@@ -1,9 +1,8 @@
 <!-- ---
-!-- title: ./genai/templates/Correct.md
-!-- author: ywatanabe
-!-- date: 2024-11-15 09:25:13
+!-- title: 2025-01-06 08:23:16
+!-- author: ywata-note-win
+!-- date: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/Correct.md
 !-- --- -->
-
 
 ----------
 Background

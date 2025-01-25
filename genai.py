@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-12-19 09:27:00 (ywatanabe)"
+# Timestamp: "2025-01-24 04:03:38 (ywatanabe)"
+# File: genai.py
+
+__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
+
+# Time-stamp: "2025-01-24 04:03:38 (ywatanabe)"
 # File: ./genai/genai.py
 
 __file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
@@ -44,6 +49,7 @@ I am busy. So,
 - When programming code is provided, please concentrate on differences between my input and your output; always be concise and stick to the point.
 - However, do not skip any lines of code as I will use your output as they are, even when your code is long, do not care about it. In such a case I will request you to continue afterwards.
 - Trailing comment is removed. So, when adding comments, please write in dedicated lines instead of placing at the end of line.
+- When you return code, please wrap them with triple backquotations with language indicator, like ```python\nCODE\n```
 ########################################
 """
 

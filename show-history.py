@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-10-30 11:12:38 (ywatanabe)"
-# File: genai/show-history.py
+# Time-stamp: "2025-01-06 17:45:24 (ywatanabe)"
+# File: show-history.py
+
+__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/show-history.py"
 
 import json
 import argparse
 from mngs.path import split as mngs_path_split
-
-# __file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/show-history.py"
 
 def convert_json_to_text(input_path, n_interactions=-1):
     try:

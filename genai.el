@@ -1,10 +1,10 @@
-;;; -*- lexical-binding: t -*-
-;;; Author: 2024-12-29 17:28:48
-;;; Time-stamp: <2024-12-29 17:28:48 (ywatanabe)>
+;;; -*- coding: utf-8; lexical-binding: t -*-
+;;; Author: 2025-01-25 23:16:05
+;;; Timestamp: <2025-01-25 23:16:05>
 ;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.el
 
-;; Copyright (C) 2024 Yusuke Watanabe
 
+;; Copyright (C) 2024 Yusuke Watanabe
 ;; Author: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
 ;; Maintainer: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
 ;; Created: 7 Jul 2024
@@ -13,14 +13,11 @@
 ;; License: GNU General Public License (GPL) version 3
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 ;; Package-Requires: ((emacs "25.1") (markdown-mode "2.6") (pulse "1.0") (async "1.9.4"))
-
 ;; Keywords: tools, LLM, template
-
 ;;; Commentary:
 ;;
 ;; `genai.el` provides an interface to interact with large language models
 ;; (LLMs) such as ChatGPT, Gemini, Claude, Llama.
-
 ;; Features:
 ;;
 ;; - LLM queries are constructed from the region or manual typing
@@ -36,7 +33,6 @@
 ;;
 ;; - Conversation history as both human- and AI-readable files is stored,
 ;;   independently from chat history applied to LLMs
-
 ;; Usage:
 ;;
 ;; - M-x genai-on-region:
@@ -54,7 +50,6 @@
 ;;
 ;; - M-p (on "GenAI" buffer):
 ;;       Navigate to the "previous" code block and copy the content to the kill ring
-
 ;;; Sample configuration:
 ;;
 ;; (require 'genai)
@@ -95,13 +90,16 @@
 ;;
 ;; ;; Key Bindings
 ;; (define-key global-map (kbd "C-M-g") 'genai-on-region)
-
-
 ;;; Code:
+
 (require 'markdown-mode)
+
 (require 'cl-lib)
+
 (require 'async)
+
 (require 'ansi-color)
+
 ;; `#'load`-check on each file:
 ;; ```
 ;; Loading genai.el
@@ -227,13 +225,15 @@
 (defvar-local genai-input-marker nil
   "Marker for the input position in GenAI buffer.")
 
-
 (defvar genai-template-mapping nil
   "Mapping between shortcuts and their corresponding readme files.
 Example: Template shortcuts can be customized as:
 \\=((\"p\" . \"Program\")              ; p -> Program.md
+
 (\"e\" . \"Email\")                ; e -> Email.md
+
 (\"c\" . \"Correct\")              ; c -> Correct.md
+
 (\"my\" . \"MyAwesomeTemplate\"))  ; my -> MyAwesomeTemplate.md")
 
 (defcustom genai-buffer-max-lines 1024
@@ -242,17 +242,37 @@ Example: Template shortcuts can be customized as:
   :group 'genai)
 
 ;;;###autoload
-(defun genai-switch-llm-provider (provider)
-  "Switch the GenAI provider."
+
+(defun genai-switch (provider)
+  "Switch the GenAI provider and select a model."
   (interactive
    (list (completing-read "Select GenAI provider: "
-                          '("anthropic" "google" "deepseek" "openai")
+                          '("anthropic" "google" "deepseek" "groq" "openai")
                           nil t)))
   (setq genai-llm-provider provider)
-  (message (format "%s_API_KEYS" (upcase provider)))
-  (setq genai-api-keys (getenv (format "%s_API_KEYS" (upcase provider))))
-  (setq genai-engine (getenv (format "%s_ENGINE" (upcase provider))))
-  (message "Switched GenAI provider to: %s" provider))
+  (let* ((provider-models
+          (cond
+           ((string= provider "anthropic") '("claude-3-5-sonnet-20241022" "claude-3-5-haiku-20241022"))
+           ((string= provider "google") '("gemini-2.0-flash-exp"))
+           ((string= provider "deepseek") '("deepseek-chat" "deepseek-coder" "deepseek-reasoner"))
+           ((string= provider "groq") '("llama-3.3-70b-versatile"))
+           ((string= provider "openai") '("o1" "o1-mini" "gpt-4o" "gpt-4o-mini"))))
+         (selected-model (completing-read "Select model: " provider-models nil t)))
+    (setq genai-api-keys (getenv (format "%s_API_KEYS" (upcase provider))))
+    (setq genai-engine selected-model)
+    (message "Switched to %s using model: %s" provider selected-model)))
+
+;; (defun genai-switch-llm-provider (provider)
+;;   "Switch the GenAI provider."
+;;   (interactive
+;;    (list (completing-read "Select GenAI provider: "
+;;                           '("anthropic" "google" "deepseek" "groq" "openai")
+;;                           nil t)))
+;;   (setq genai-llm-provider provider)
+;;   (message (format "%s_API_KEYS" (upcase provider)))
+;;   (setq genai-api-keys (getenv (format "%s_API_KEYS" (upcase provider))))
+;;   (setq genai-engine (getenv (format "%s_ENGINE" (upcase provider))))
+;;   (message "Switched GenAI provider to: %s" provider))
 
 (defun genai-send-buffer-input ()
   "Send text from the last separator as input to GenAI."
@@ -359,6 +379,7 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
   (let ((shortcuts (make-hash-table :test 'equal))
         (counts (make-hash-table :test 'equal))
         (completion-alist nil))
+
     ;; Apply predefined mappings first
     (when (boundp 'genai-template-mapping)
       (dolist (mapping genai-template-mapping)
@@ -368,9 +389,11 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
                                         :key #'car
                                         :test #'string=)))
             (puthash key (car template) shortcuts)
+
             ;; Add combined format for completion
             (push (cons (format "%s - %s" key (car template)) (car template)) completion-alist)
             (puthash (substring key 0 1) 1 counts)))))
+
     ;; Handle remaining templates
     (setq templates (sort templates (lambda (a b) (string< (car a) (car b)))))
     (dolist (template templates)
@@ -387,6 +410,7 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
                         (format "%s%d" last-capital count))))
         (unless (gethash new-key shortcuts)
           (puthash new-key name shortcuts)
+
           ;; Add combined format for completion
           (push (cons (format "%s - %s" new-key name) name) completion-alist)
           (puthash last-capital (1+ count) counts))))
@@ -431,21 +455,16 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
             (puthash base-key (1+ count) key-count)
             (puthash key template shortcuts)
             (push (format "(%s) %s" key template) prompt-parts))))
-
       (setq prompt-parts (sort prompt-parts 'string<))
-
       (let* ((prompt (concat "Template or Manual Instruction:\n"
                              (mapconcat 'identity prompt-parts " ")
                              "\n"))
              (input (read-string prompt))
              (template-type (or (gethash input shortcuts)
                                 (if (string-blank-p input) "None" input))))
-
         (unless (string= input "r")
           (display-buffer (get-buffer-create "*GenAI*")))
-
         template-type))))
-
 
 (cl-defun genai--safe-shell-quote-argument (arg)
   "Safely shell-quote ARG if non-nil and non-empty, else return an empty string."
@@ -487,18 +506,16 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
 (defun genai--construct-python-command (prompt)
   "Construct complete command string..."
-  (interactive "sEnter prompt: ")
   (genai--parse-api-keys)
   (let* ((template-type (genai--select-template))
          (tmp-prompt-file (make-temp-file "genai-prompt-" nil ".txt"))
          (command nil))
-
     (unwind-protect
         (progn
+
           ;; Write to file using with-temp-file to handle file operations safely
           (with-temp-file tmp-prompt-file
             (insert prompt))
-
           (setq command
                 (format "%s %s %s --engine %s --max_tokens %s --temperature %s --human_history_path %s --n_history %s --template_type %s --prompt_file %s"
                         (genai--safe-shell-quote-argument genai-python-bin-path)
@@ -513,11 +530,11 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                         (genai--safe-shell-quote-argument genai-n-history)
                         (genai--safe-shell-quote-argument template-type)
                         (genai--safe-shell-quote-argument tmp-prompt-file))))
-
       (genai--insert-prompt-template-type-and-engine prompt template-type)
       command)))
 
 ;;;###autoload
+
 (defun genai-show-history (&optional num-interactions)
   "Show NUM-INTERACTIONS lines of chat history in a temporary buffer."
   (interactive "sEnter the number of latest interactions (default: 64): ")
@@ -552,6 +569,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (message "Loading history to *GenAI All History* buffer...")))
 
 ;;;###autoload
+
 (defun genai-reset-history ()
   "Backup and reset the GenAI history files."
   (interactive)
@@ -575,7 +593,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (insert "[]"))
     (with-temp-file genai-history-ai-path
       (insert "[]"))
-
     (message "GenAI history has been reset. Backups created in %s" backup-dir)))
 
 (defun genai--start-spinner ()
@@ -624,6 +641,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
         (setq genai--fixed-spinner-position nil)))))
 
 ;; Update process sentinel
+
 (defun genai--process-sentinel (_process msg)
   "Custom sentinel for the GenAI process."
   (cond
@@ -642,18 +660,15 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
 (cl-defun genai--start-python-process (prompt)
   "Start the GenAI process with the given PROMPT using a shell command."
-  (interactive "sEnter prompt: ")
   (when (and genai--process (process-live-p genai--process))
     (interrupt-process genai--process)
     (delete-process genai--process))
-
   (let* ((command (genai--construct-python-command prompt))
          (process (start-process-shell-command "genai--process" "*GenAI*" command)))
     (setq genai--process process)
     (set-process-sentinel process #'genai--process-sentinel)
     (genai--start-spinner)
     process))
-
 
 (cl-defun genai--stop-python-process ()
   "Stop the GenAI process if it is running."
@@ -681,48 +696,86 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (genai--trim-buffer)))
 
 ;;;###autoload
+
 (cl-defun genai--run (prompt)
   "Run GenAI command with prompt."
-  (interactive)
   (cond ((equal prompt "g")
          (switch-to-buffer-other-window "*GenAI*")
          (keyboard-quit)
          (message "Jump to the \"*GenAI*\" buffer"))
-
         ((equal prompt "h")
          (genai-show-history)
          (keyboard-quit))
-
         (t
          (with-current-buffer (get-buffer-create "*GenAI*")
            (font-lock-ensure)
            (message "GenAI: Running...")
            (genai--start-python-process prompt)))))
 
-
 ;; (defun genai--dired-get-contents ()
-;;   "Get contents of marked files or file at point in dired."
-;;   (let* ((files (dired-get-marked-files nil nil nil t))
+;;   "Get contents of marked files recursively, handling only safe files. If no files specified, just call ordinal genai-on-region"
+;;   (let* ((files (dired-get-marked-files nil nil
+;;                                         (lambda (f)
+;;                                           (dired-file-marker f))
+;;                                         nil t))
+;;          (safe-extensions '(".el" ".py" ".sh" ".txt" ".md" ".org" ".yml" ".yaml" ".json"))
+;;          (size-limit (* 1024 1024))
 ;;          (contents ""))
-;;     (if (equal files '(nil))
-;;         (read-string "Enter prompt: " "")
-;;       (dolist (file files)
-;;         (when (file-regular-p file)
-;;           (setq contents
-;;                 (concat contents
-;;                         (format "\n;; %s\n" (file-name-nondirectory file))
-;;                         (with-temp-buffer
-;;                           (insert-file-contents file)
-;;                           (buffer-string))))))
+;;     (if (null files)
+;;         (error "No files marked. Please mark files with 'm' before running this command")
+;;       (cl-labels ((process-file
+;;                     (file)
+;;                     (cond
+;;                      ((file-directory-p file)
+;;                       (dolist (f (directory-files file t "^[^.]"))
+;;                         (process-file f)))
+;;                      ((and (file-regular-p file)
+;;                            (member (file-name-extension file t) safe-extensions)
+;;                            (< (file-attribute-size (file-attributes file)) size-limit))
+;;                       (setq contents
+;;                             (concat contents
+;;                                     (format "\n\n;;; ----- %s -----\n\n" file)
+;;                                     (with-temp-buffer
+;;                                       (insert-file-contents file)
+;;                                       (buffer-string))))))))
+;;         (dolist (file files)
+;;           (process-file file)))
 ;;       contents)))
+;; ;;;###autoload
+;; (defun genai-on-region ()
+;;   "Run GenAI command on selected region, dired files or prompt.
+;; If a region is selected, use that text as the prompt.
+;; If in dired-mode with marked files, concatenate their contents.
+;; Otherwise, prompt the user to enter a prompt.
+;; The response will be displayed in the *GenAI* buffer."
+;;   (interactive)
+;;   (genai--init)
+;;   (genai--ensure-dependencies)
+;;   (let* ((region-text
+;;           (cond
+;;            ((use-region-p)
+;;             (buffer-substring-no-properties (region-beginning) (region-end)))
+;;            ((eq major-mode 'dired-mode)
+;;             (genai--dired-get-contents))
+;;            (t
+;;             (read-string "Enter prompt: " ""))))
+;;          (buffer (get-buffer-create "*GenAI*")))
+;;     (with-current-buffer buffer
+;;       (unless (eq major-mode 'genai-mode)
+;;         (genai-mode)))
+;;     (when (use-region-p)
+;;       (deactivate-mark))
+;;     (genai--run region-text)))
 
 (defun genai--dired-get-contents ()
-  "Get contents of marked files recursively, handling only safe files."
-  (let* ((files (dired-get-marked-files nil nil nil nil))
+  "Get contents of marked files recursively, handling only safe files. If no files specified, just call ordinal genai-on-region"
+  (let* ((marked-files (dired-get-marked-files nil nil
+                                               (lambda (f)
+                                                 (dired-file-marker f))))
          (safe-extensions '(".el" ".py" ".sh" ".txt" ".md" ".org" ".yml" ".yaml" ".json"))
          (size-limit (* 1024 1024))
          (contents ""))
-    (if (null files)
+    (if (null marked-files)
         (read-string "Enter prompt: " "")
       (cl-labels ((process-file
                     (file)
@@ -735,16 +788,16 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                            (< (file-attribute-size (file-attributes file)) size-limit))
                       (setq contents
                             (concat contents
-                                    (format "\n;; %s\n" (file-relative-name file))
+                                    (format "\n\n;;; ----- %s -----\n\n" file)
                                     (with-temp-buffer
                                       (insert-file-contents file)
                                       (buffer-string))))))))
-        (dolist (file files)
+        (dolist (file marked-files)
           (process-file file)))
       contents)))
 
-
 ;;;###autoload
+
 (defun genai-on-region ()
   "Run GenAI command on selected region, dired files or prompt.
 If a region is selected, use that text as the prompt.
@@ -775,6 +828,7 @@ The response will be displayed in the *GenAI* buffer."
   (if-let ((genai-buffer (get-buffer "*GenAI*")))
       (with-current-buffer genai-buffer
         (goto-char (point-max))
+
         ;; Search for the splitter and update found position
         (when (re-search-backward genai--splitter nil t)
           (beginning-of-line))
@@ -789,6 +843,7 @@ The response will be displayed in the *GenAI* buffer."
   (if-let ((genai-buffer (get-buffer "*GenAI All History*")))
       (with-current-buffer genai-buffer
         (goto-char (point-max))
+
         ;; Search for the splitter and update found position
         (when (re-search-backward genai--splitter-human-readable nil t)
           (beginning-of-line))
@@ -807,8 +862,10 @@ The response will be displayed in the *GenAI* buffer."
         (insert "\n\n"))))
 
 ;;;###autoload
+
 (defun genai-copy-last ()
   "Copy the last LLM output into kill ring"
+  (interactive)
   (if-let ((genai-buffer (get-buffer "*GenAI*")))
       (with-current-buffer genai-buffer
         (goto-char (point-max))
@@ -817,8 +874,10 @@ The response will be displayed in the *GenAI* buffer."
         (kill-ring-save (region-beginning) (region-end)))))
 
 ;;;###autoload
+
 (defun genai-copy-code-blocks ()
   "Copy code blocks in the last LLM output into kill ring"
+  (interactive)
   (with-current-buffer (get-buffer "*GenAI*")
     (goto-char (point-max))
     (let ((count nil)
@@ -832,6 +891,7 @@ The response will be displayed in the *GenAI* buffer."
               (progn
                 (setq end (match-beginning 0))
                 (push (buffer-substring-no-properties start end) blocks))))
+
         ;; Remove nreverse to keep the original order of discovery
         (dolist (block blocks)
           (kill-new block))
@@ -839,8 +899,10 @@ The response will be displayed in the *GenAI* buffer."
         (message "Code blocks copied (n = %d)" count)))))
 
 ;;;###autoload
+
 (defun genai-next-code-block ()
   "Navigate to the next code block and select the content"
+  (interactive)
   (with-current-buffer "*GenAI*"
     (end-of-line)
     (when (looking-at-p genai--code-block-end-delimiter)
@@ -859,8 +921,10 @@ The response will be displayed in the *GenAI* buffer."
       (deactivate-mark))))
 
 ;;;###autoload
+
 (defun genai-previous-code-block ()
   "Navigate to the previous code block and select the content"
+  (interactive)
   (with-current-buffer "*GenAI*"
 
     ;; Find the previous code block end delimiter
@@ -882,12 +946,16 @@ The response will be displayed in the *GenAI* buffer."
 (add-hook 'comint-output-filter-functions 'genai--clean-up-output)
 
 ;; Keybindings
+
 (define-key genai-mode-map (kbd "M-n") 'genai-next-code-block)
+
 (define-key genai-mode-map (kbd "M-p") 'genai-previous-code-block)
+
 (define-key genai-mode-map (kbd "C-c C-c") 'genai-send-buffer-input)
 
 (provide 'genai)
 
 ;;; genai.el ends here
 
-(message "%s was loaded." (file-name-nondirectory (or load-file-name buffer-file-name)))
+(when (not load-file-name)
+  (message "%s was loaded." (file-name-nondirectory (or load-file-name buffer-file-name))))
