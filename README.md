@@ -5,7 +5,7 @@
 !-- --- -->
 
 
-# Emacs client for LLM
+# LLM Client for Emacs
 
 ## Installation
 ```bash
