@@ -1,4 +1,10 @@
 <!-- ---
+!-- Timestamp: 2025-03-09 00:02:37
+!-- Author: ywatanabe
+!-- File: /home/ywatanabe/.emacs.d/lisp/genai/templates/ProgrammingTest.md
+!-- --- -->
+
+<!-- ---
 !-- title: ProgramTest.md
 !-- author: ywatanabe
 !-- date: 2024-11-03 02:44:43
@@ -47,6 +53,19 @@ You are an experienced programmer, especially for writing test code. Please impl
 ################################################################################
 # For Python Code
 ################################################################################
+In test codes:
+  - DO NOT USE UNITTEST
+  - USE PYTEST
+  - Prepare pytest.ini
+  - Structure
+    - ./src/project-name/__init__.py
+    - ./tests/project-name/...
+  - Each test function should be smallest
+  - Each test file contain only one test function
+  - Each Test Class should be defined in a dedicated script
+  - Test codes MUST BE MEANINGFUL
+  - Implement run_tests.sh (or run_tests.ps1 for projects which only works on Windows) in project root
+
 - Do not change the header of python files:
   ``` python
   #!/usr/bin/env python3
@@ -275,7 +294,49 @@ You are an experienced programmer, especially for writing test code. Please impl
   # EOF
   ```
 
+################################################################################
+# For Elisp Code
+################################################################################
+In test codes:
+  - Test codes will be executed after loading all environments and in the run time environment
+    - Therefore, do not change variables for testing purposes
+    - I would like to just check whether codes are working in the variables defined in my run time code
+      - DO NOT SETQ/DEFVAR/DEFCUSTOM ANYTHING
+      - DO NOT LET/LET* TEST VARIABLES
+      - DO NOT LOAD ANYTHING
+      - If source scripts are provided, please create the corresponding test files in a one-by-one manner, adding test- prefix to the soruce scripts filenames
+      - Split test code into smallest blocks
+        - Each ert-deftest should include only one should or should-not
+    - Test codes MUST BE MEANINGFUL
+
+  - To check if require statement is valid, use this format IN A ENTRY FILE: loadable tests should not be split across files but concentrate on central entry files.
+   ```elisp
+   (require 'ert)
+
+   (ert-deftest test-lle-with-loadable
+       ()
+     (require 'lle-with)
+     (should
+      (featurep 'lle-with)))
+
+   (ert-deftest test-lle-with-system-root-loadable
+       ()
+     (require 'lle-with-system-root)
+     (should
+      (featurep 'lle-with-system-root)))
+
+   (ert-deftest test-lle-with-project-root-loadable
+       ()
+     (require 'lle-with-project-root)
+     (should
+      (featurep 'lle-with-project-root)))
+   ```
+   - Ensure the codes identical between before and after testing; implement cleanup process. DO NOT ALLOW CHANGE DUE TO TEST.
+   - When edition is required for testing, first store original information and revert in the cleanup stage.
+
 ----------
 Now, my input is as follows:
 ----------
 PLACEHOLDER
+
+<!-- EOF -->

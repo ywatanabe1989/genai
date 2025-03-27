@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-01-24 04:03:38 (ywatanabe)"
-# File: genai.py
-
-__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
-
-# Time-stamp: "2025-01-24 04:03:38 (ywatanabe)"
-# File: ./genai/genai.py
-
-__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
+# Timestamp: "2025-03-28 10:06:05 (ywatanabe)"
+# File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py
+# ----------------------------------------
+import os
+__FILE__ = (
+    "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
+)
+__DIR__ = os.path.dirname(__FILE__)
+# ----------------------------------------
 
 """
 Provides an interface for interacting with GenAI APIs (e.g., Gemini).
@@ -38,21 +38,9 @@ from mngs.path import split as mngs_path_split
 from mngs.str import printc
 
 ## Parameters
-GENERAL_INSTRUCTION = f"""
-########################################
-## General Instruction
-########################################
-I am busy. So,
+TEMPLATE_DIR = mngs_path_split(__file__)[0] + "./templates/"
 
-- Please avoid unnecessary messages.
-- Keep your output minimal.
-- When programming code is provided, please concentrate on differences between my input and your output; always be concise and stick to the point.
-- However, do not skip any lines of code as I will use your output as they are, even when your code is long, do not care about it. In such a case I will request you to continue afterwards.
-- Trailing comment is removed. So, when adding comments, please write in dedicated lines instead of placing at the end of line.
-- When you return code, please wrap them with triple backquotations with language indicator, like ```python\nCODE\n```
-########################################
-"""
-
+GENERAL_INSTRUCTION = mngs_io_load(os.path.join(TEMPLATE_DIR, "General.md"))
 
 ## Functions
 def load_histories(human_history_path, ai_history_path):

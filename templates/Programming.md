@@ -1,14 +1,7 @@
 <!-- ---
-!-- Timestamp: 2025-01-18 05:11:24
+!-- Timestamp: 2025-03-28 10:02:06
 !-- Author: ywatanabe
 !-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/Programming.md
-!-- --- -->
-<!-- Time-stamp: "2025-01-18 05:11:24 (ywatanabe)" -->
-<!-- File: Programming.md -->
-<!-- ---
-!-- title: 2024-12-25 08:22:46
-!-- author: ywata-note-win
-!-- date: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/Programming.md
 !-- --- -->
 
 ----------
@@ -72,7 +65,7 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 ################################################################################
 - Do not use try-except blocks as much as possible. This is because I often struggle with invisible errors for debugging.
 
-- Ensure indent level matches with my input; I will insert your output into my code as is.
+- Ensure indent level matches with my input; I will insert your output into my code as is. However, the indents in my input may be corrupted for formatting issues. In that case, please fix them.
 
 - Do not change the header of python files:
   ``` python
@@ -343,6 +336,5 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 Now, my input is as follows:
 ----------
 PLACEHOLDER
-
 
 <!-- EOF -->
