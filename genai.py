@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: "2024-12-18 08:31:38 (ywatanabe)"
-# File: ./genai/genai.py
-
-__file__ = "/home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py"
+# Timestamp: "2025-04-27 15:29:48 (ywatanabe)"
+# File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py
+# ----------------------------------------
+import os
+__FILE__ = (
+    "./genai.py"
+)
+__DIR__ = os.path.dirname(__FILE__)
+# ----------------------------------------
 
 """
 Provides an interface for interacting with GenAI APIs (e.g., Gemini).
 
 This script handles:
-- Loading and formatting chat histories
-- Loading prompt templates
-- Making API calls with configurable parameters
-- Updating and saving conversation histories
+    - Loading and formatting chat histories
+    - Loading prompt templates
+    - Making API calls with configurable parameters
+    - Updating and saving conversation histories
 
 Key features:
-- Supports multiple API keys and engines
-- Templated prompts system
-- Conversation history management
-- Streaming responses
-- Command line interface
+    - Supports multiple API keys and engines
+    - Templated prompts system
+    - Conversation history management
+    - Streaming responses
+    - Command line interface
 """
 
 import argparse
@@ -30,47 +35,97 @@ from mngs.io import glob as mngs_io_glob
 from mngs.io import load as mngs_io_load
 from mngs.io import save as mngs_io_save
 from mngs.path import split as mngs_path_split
-from mngs.str import printc
 
 ## Parameters
-GENERAL_INSTRUCTION = f"""
-########################################
-## General Instruction
-########################################
-I am busy. So,
+TEMPLATE_DIR = mngs_path_split(__file__)[0] + "./templates/"
 
-- Please avoid unnecessary messages.
-- Keep your output minimal.
-- When programming code is provided, please concentrate on differences between my input and your output; always be concise and stick to the point.
-- However, do not skip any lines of code as I will use your output as they are, even when your code is long, do not care about it. In such a case I will request you to continue afterwards.
-########################################
-"""
+GENERAL_INSTRUCTION = mngs_io_load(os.path.join(TEMPLATE_DIR, "General.md"))
 
 
-## Functions
-def load_histories(human_history_path, ai_history_path):
-    try:
-        human_history = mngs_io_load(human_history_path)
-    except Exception as e:
-        warnings.warn(
-            str(e) + f"\nCreating new history file: {human_history_path}"
-        )
-        human_history = []
+# ------------------------------
+# Main Function
+# ------------------------------
+def run_genai(
+    api_keys,
+    engine,
+    max_tokens,
+    temperature,
+    human_history_path,
+    template_type,
+    n_history,
+    prompt,
+    prompt_file,
+):
+    # Prompt
+    prompt = _handle_prompt_and_prompt_file(prompt, prompt_file)
 
-    try:
-        ai_history = mngs_io_load(ai_history_path)
-    except Exception as e:
-        warnings.warn(
-            str(e) + f"\nCreating new history file: {ai_history_path}"
-        )
-        ai_history = []
+    # Params
+    ai_history_path = human_history_path.replace("human", "ai")
 
-    human_history = format_history(human_history)
-    ai_history = format_history(ai_history)
+    # Load histories
+    human_history, ai_history = _load_histories(
+        human_history_path, ai_history_path
+    )
+
+    # Model initialization
+    llm = mngs_ai_GenAI(
+        model=engine,
+        api_key=api_keys,
+        stream=True,
+        n_keep=n_history,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+
+    # Trim histories
+    [llm.update_history(**_history) for _history in ai_history[-n_history:]]
+
+    # AI prompt = general_instruction + template + prompt
+    _prompt_template = _get_template(template_type)
+    _prompt_embedded = _prompt_template.replace("PLACEHOLDER", prompt)
+    ai_prompt = GENERAL_INSTRUCTION + _prompt_embedded
+
+    # Main
+    llm_out = llm(ai_prompt)
+
+    # Update chat histories
+    _save_updated_human_history(
+        human_history, human_history_path, template_type, prompt, llm_out
+    )
+    _save_human_readable_history(human_history, human_history_path)
+    _save_updated_ai_history(ai_history, ai_history_path, llm)
+
+
+# ------------------------------
+# Helper Functions
+# ------------------------------
+def _handle_prompt_and_prompt_file(prompt, prompt_file):
+    if (not prompt) and (not prompt_file):
+        prompt = ""
+
+    if prompt_file:
+        prompt = str(prompt) + "\n\n" + "\n".join(mngs_io_load(prompt_file))
+
+    return prompt
+
+
+def _load_histories(human_history_path, ai_history_path):
+    def _load_or_create_history(history_path):
+        try:
+            history = mngs_io_load(history_path)
+        except Exception as e:
+            warnings.warn(
+                str(e) + f"\nCreating new history file: {history_path}"
+            )
+            history = []
+        return _format_history(history)
+
+    human_history = _load_or_create_history(human_history_path)
+    ai_history = _load_or_create_history(ai_history_path)
     return human_history, ai_history
 
 
-def format_history(ai_history):
+def _format_history(ai_history):
     formatted = []
     for item in ai_history:
         role = item["role"]
@@ -99,8 +154,8 @@ def load_templates():
     return TEMPLATES
 
 
-def update_human_history(
-    human_history, human_history_path, template_type, prompt, model_out
+def _save_updated_human_history(
+    human_history, human_history_path, template_type, prompt, llm_out
 ):
     human_history.append(
         {
@@ -108,98 +163,87 @@ def update_human_history(
             "content": prompt,
         }
     )
-    human_history.append({"role": "assistant", "content": model_out})
-    human_history = format_history(human_history)
+    human_history.append({"role": "assistant", "content": llm_out})
+    human_history = _format_history(human_history)
     mngs_io_save(human_history, human_history_path, verbose=False)
 
 
-def update_ai_history(ai_history, ai_history_path, model):
+def _save_updated_ai_history(ai_history, ai_history_path, model):
     n_new_history = 2
     for history in model.history[-n_new_history:]:
         ai_history.append(history)
-    ai_history = format_history(ai_history)
+    ai_history = _format_history(ai_history)
     mngs_io_save(ai_history, ai_history_path, verbose=False)
 
 
-def determine_template(template_type):
+def _get_template(template_type):
     TEMPLATES = load_templates()
     if str(template_type) == "None":
         template_type = ""
     return TEMPLATES.get(template_type, f"{template_type}\nPLACEHOLDER")
 
 
-def run_genai(
-    api_keys,
-    engine,
-    max_tokens,
-    temperature,
-    human_history_path,
-    template_type,
-    n_history,
-    prompt,
-    prompt_file,
+def _save_human_readable_history(
+    human_history, human_history_path, n_interactions=None
 ):
+    # select last n_interactions if specified
+    human_history = (
+        human_history[-n_interactions:]
+        if n_interactions and n_interactions > 0
+        else human_history
+    )
 
-    if (not prompt) and (not prompt_file):
-        print("Please input prompt\n")
-        return
+    # prepare separator
+    separator = "=" * 60
 
-    if prompt_file:
-        prompt = (
-            str(prompt).strip()
-            + "\n\n"
-            + str("\n".join(mngs_io_load(prompt_file))).strip()
-        )
+    # Format human history in a readable manner
+    human_readable_history_str_list = [
+        f"\n\n{separator}\n\n"
+        + entry["role"].replace("user", "YOU").replace("assistant", "GENAI")
+        + "\n\n"
+        + entry["content"]
+        + "\n"
+        for entry in human_history
+    ]
 
-    if prompt.strip() == "":
-        print("Please input prompt\n")
-        return
-
-    else:
-        # Handle histories
-        ai_history_path = human_history_path.replace("human", "ai")
-        human_history, ai_history = load_histories(
-            human_history_path, ai_history_path
-        )
-
-        # Model initialization
-        model = mngs_ai_GenAI(
-            model=engine,
-            api_key=api_keys,
-            stream=True,
-            n_keep=n_history,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-        [
-            model.update_history(**_history)
-            for _history in ai_history[-n_history:]
-        ]
-
-        # AI prompt = general_instruction + template + prompt
-        ai_prompt = GENERAL_INSTRUCTION + determine_template(template_type).replace("PLACEHOLDER", prompt)
-
-        # print("----------------------------------------")
-        # print(f"AI Prompt: {ai_prompt}")
-        # print("----------------------------------------")
-
-        # Main
-        model_out = model(ai_prompt)
-
-        # print("----------------------------------------")
-        # print(f"Model OUTPUT: {model_out}")
-        # print("----------------------------------------")
-
-
-        # Update chat histories
-        update_human_history(
-            human_history, human_history_path, template_type, prompt, model_out
-        )
-        update_ai_history(ai_history, ai_history_path, model)
+    # Saving as markdown
+    human_readable_history_str = "".join(human_readable_history_str_list)
+    human_readable_history_path = human_history_path.replace(
+        "human", "human-readable"
+    ).replace(".json", ".md")
+    mngs_io_save(
+        human_readable_history_str, human_readable_history_path, verbose=False
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
+
+    # Prompt
+    # --------------------
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default="",
+        help="(default: %(default)s)",
+    )
+
+    parser.add_argument(
+        "--prompt_file",
+        type=str,
+        default="",
+        help="(default: %(default)s)",
+    )
+
+    parser.add_argument(
+        "--template_type",
+        type=str,
+        default="",
+        help="(default: %(default)s)",
+    )
+
+    # API
+    # --------------------
     parser.add_argument(
         "--api_key",
         type=str,
@@ -214,6 +258,8 @@ if __name__ == "__main__":
         help="(default: %(default)s)",
     )
 
+    # LLM Parameters
+    # --------------------
     parser.add_argument(
         "--max_tokens",
         type=int,
@@ -228,13 +274,8 @@ if __name__ == "__main__":
         help="(default: %(default)s)",
     )
 
-    parser.add_argument(
-        "--human_history_path",
-        type=str,
-        default=mngs_path_split(__file__)[0] + "./history-human-secret.json",
-        help="(default: %(default)s)",
-    )
-
+    # History
+    # --------------------
     parser.add_argument(
         "--n_history",
         type=int,
@@ -243,23 +284,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--template_type",
+        "--human_history_path",
         type=str,
-        default="",
-        help="(default: %(default)s)",
-    )
-
-    parser.add_argument(
-        "--prompt",
-        type=str,
-        default="",
-        help="(default: %(default)s)",
-    )
-
-    parser.add_argument(
-        "--prompt_file",
-        type=str,
-        default="",
+        default=mngs_path_split(__file__)[0] + "./history-human-secret.json",
         help="(default: %(default)s)",
     )
 
@@ -276,7 +303,6 @@ if __name__ == "__main__":
         prompt=args.prompt,
         prompt_file=args.prompt_file,
     )
-
 
 """
 python ./genai/genai.py
