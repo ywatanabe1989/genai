@@ -258,7 +258,7 @@ In test codes:
   # Author: ywatanabe (ywatanabe@alumni.u-tokyo.ac.jp)
   # Date: $(date +"%Y-%m-%d-%H-%M")
 
-  LOG_FILE="${0%.sh}.log"
+  LOG_FILE=".$0.log"
 
   usage() {
       echo "Usage: $0 [-s|--subject <subject>] [-m|--message <message>] [-h|--help]"
