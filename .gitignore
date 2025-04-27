@@ -2,6 +2,7 @@
 ### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/Specific.gitignore ###
 histories/*
 history-human-secret.json
+history-human-readable-secret.md
 history-ai-secret.json
 templates/.SciWrite.md
 .genai.py.~undo-tree~
