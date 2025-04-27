@@ -1,5 +1,5 @@
 <!-- ---
-!-- Timestamp: 2025-03-28 10:02:06
+!-- Timestamp: 2025-04-26 06:12:13
 !-- Author: ywatanabe
 !-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/Programming.md
 !-- --- -->
@@ -24,7 +24,7 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 - Avoid unnecessary comments as they are disruptive.
 	- Return only the updated code without comments.
 
-- When code is edited, please use + and - signs to indicated diff lines.
+- DO NOT USE DIFF FORMAT
 
 - String should be split into shorter lines using f-string concatenation with parentheses:
 - NG
@@ -263,7 +263,7 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
   # Author: ywatanabe (ywatanabe@alumni.u-tokyo.ac.jp)
   # Date: $(date +"%Y-%m-%d-%H-%M")
 
-  LOG_FILE=."$0.log" # Do not remove existing extension (e.g., script.sh.log is preferred)
+  LOG_FILE=".$0.log" # Do not remove existing extension (e.g., script.sh.log is preferred)
 
   usage() {
       echo "Usage: $0 [-s|--subject <subject>] [-m|--message <message>] [-h|--help]"
