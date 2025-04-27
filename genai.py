@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-04-27 10:36:05 (ywatanabe)"
+# Timestamp: "2025-04-27 11:25:25 (ywatanabe)"
 # File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py
 # ----------------------------------------
 import os
@@ -92,6 +92,7 @@ def run_genai(
     _save_updated_human_history(
         human_history, human_history_path, template_type, prompt, llm_out
     )
+    _save_human_readable_history(human_history, human_history_path)
     _save_updated_ai_history(ai_history, ai_history_path, llm)
 
 
@@ -99,19 +100,11 @@ def run_genai(
 # Helper Functions
 # ------------------------------
 def _handle_prompt_and_prompt_file(prompt, prompt_file):
-    # Handles Prompt and Prompt File
     if (not prompt) and (not prompt_file):
         prompt = ""
 
     if prompt_file:
-        prompt = (
-            str(prompt).strip()
-            + "\n\n"
-            + str("\n".join(mngs_io_load(prompt_file))).strip()
-        )
-
-    # if prompt.strip() == "":
-    #     print("Please input prompt\n")
+        prompt = str(prompt) + "\n\n" + "\n".join(mngs_io_load(prompt_file))
 
     return prompt
 
@@ -127,24 +120,6 @@ def _load_histories(human_history_path, ai_history_path):
             history = []
         return _format_history(history)
 
-    # try:
-    #     human_history = mngs_io_load(human_history_path)
-    # except Exception as e:
-    #     warnings.warn(
-    #         str(e) + f"\nCreating new history file: {human_history_path}"
-    #     )
-    #     human_history = []
-
-    # try:
-    #     ai_history = mngs_io_load(ai_history_path)
-    # except Exception as e:
-    #     warnings.warn(
-    #         str(e) + f"\nCreating new history file: {ai_history_path}"
-    #     )
-    #     ai_history = []
-
-    # human_history = _format_history(human_history)
-    # ai_history = _format_history(ai_history)
     human_history = _load_or_create_history(human_history_path)
     ai_history = _load_or_create_history(ai_history_path)
     return human_history, ai_history
@@ -206,6 +181,38 @@ def _get_template(template_type):
     if str(template_type) == "None":
         template_type = ""
     return TEMPLATES.get(template_type, f"{template_type}\nPLACEHOLDER")
+
+
+def _save_human_readable_history(
+    human_history, human_history_path, n_interactions=None
+):
+    # select last n_interactions if specified
+    human_history = (
+        human_history[-n_interactions:]
+        if n_interactions and n_interactions > 0
+        else human_history
+    )
+
+    # prepare separator
+    separator = "=" * 60
+
+    # Format human history in a readable manner
+    human_readable_history_str_list = [
+        f"\n\n{separator}\n\n"
+        + entry["role"].replace("user", "YOU").replace("assistant", "GENAI")
+        + "\n\n"
+        + entry["content"]
+        for entry in human_history
+    ]
+
+    # Saving as markdown
+    human_readable_history_str = "\n".join(human_readable_history_str_list)
+    human_readable_history_path = human_history_path.replace(
+        "human", "human-readable"
+    ).replace(".json", ".md")
+    mngs_io_save(
+        human_readable_history_str, human_readable_history_path, verbose=False
+    )
 
 
 if __name__ == "__main__":
@@ -295,7 +302,6 @@ if __name__ == "__main__":
         prompt=args.prompt,
         prompt_file=args.prompt_file,
     )
-
 
 """
 python ./genai/genai.py
