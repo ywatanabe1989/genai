@@ -1,7 +1,7 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 11:23:53>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.el
+;;; Timestamp: <2025-04-27 12:32:24>
+;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai_v02_fix_dired.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
@@ -327,33 +327,6 @@ Example: Template shortcuts can be customized as:
                    (upcase provider))))
     (setq genai-engine selected-model)
     (message "Switched to %s using model: %s" provider selected-model)))
-
-;; (defun genai-send-buffer-input
-;;     ()
-;;   "Send text from the last separator as input to GenAI."
-;;   (with-current-buffer "*GenAI*"
-;;     (let*
-;;         ((input-start
-;;           (save-excursion
-;;             (goto-char
-;;              (point-max))
-;;             (or
-;;              (re-search-backward genai--splitter nil t)
-;;              (point-min))))
-;;          (input-text
-;;           (buffer-substring-no-properties
-;;            (save-excursion
-;;              (goto-char input-start)
-;;              (forward-line 2)
-;;              (point))
-;;            (point-max))))
-;;       (when
-;;           (not
-;;            (string-empty-p
-;;             (string-trim input-text)))
-;;         (genai--insert-prompt-template-type-and-engine input-text
-;;                                                        "chat")
-;;         (genai--run input-text)))))
 
 (defun genai-send-buffer-input ()
   "Send text from the last separator as input to GenAI."
@@ -743,8 +716,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
        (command nil))
     (unwind-protect
         (progn
-
-          ;; Write to file using with-temp-file to handle file operations safely
+          ;; write prompt to temp file
           (with-temp-file tmp-prompt-file
             (insert prompt))
           (setq command
@@ -788,59 +760,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                                                      template-type)
       command)))
 
-;; ;;;###autoload
-
-;; (defun genai-show-history
-;;     (&optional num-interactions)
-;;   "Show NUM-INTERACTIONS lines of chat history in a temporary buffer."
-;;   (interactive
-;;    "sEnter the number of latest interactions (default: 64): ")
-;;   (let*
-;;       ((genai-all-history-buffer
-;;         (get-buffer-create "*GenAI All History*"))
-;;        (num-interactions
-;;         (cond
-;;          ((null num-interactions)
-;;           "64")
-;;          ((numberp num-interactions)
-;;           (number-to-string num-interactions))
-;;          ((stringp num-interactions)
-;;           (if
-;;               (string-empty-p num-interactions)
-;;               "1024"
-;;             num-interactions))
-;;          (t "1024"))))
-;;     (with-current-buffer genai-all-history-buffer
-;;       (erase-buffer))
-;;     (display-buffer genai-all-history-buffer)
-;;     (let
-;;         ((command-list
-;;           (list genai-python-bin-path
-;;                 genai-python-script-path-show-history
-;;                 "--human_history_path" genai-history-human-path
-;;                 "--n_interactions" num-interactions)))
-;;       (make-process
-;;        :name "genai-show-history"
-;;        :buffer genai-all-history-buffer
-;;        :command command-list
-;;        :sentinel
-;;        (lambda
-;;          (_process event)
-;;          (when
-;;              (string= event "finished\n")
-;;            (with-current-buffer genai-all-history-buffer
-;;              (goto-char
-;;               (point-min))
-;;              (when
-;;                  (search-forward genai--splitter nil t)
-;;                (goto-char
-;;                 (match-beginning 0))
-;;                (delete-region
-;;                 (point)
-;;                 (point-max)))
-;;              (genai--scroll-history)
-;;              (markdown-mode))))))
-;;     (message "Loading history to *GenAI All History* buffer...")))
+;;;###autoload
 
 (defun genai-show-history ()
   "Open and auto-revert the human-readable history markdown."
@@ -854,41 +774,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (display-buffer history-buf)))
 
 ;;;###autoload
-
-;; (defun genai-reset-history
-;;     ()
-;;   "Backup and reset the GenAI history files."
-;;   (interactive)
-;;   (let*
-;;       ((backup-dir
-;;         (concat genai-home-dir "histories"))
-;;        (timestamp
-;;         (format-time-string "%Y-%m-%d-%H-%M-%S"))
-;;        (human-backup
-;;         (concat backup-dir "/history-human-" timestamp ".json"))
-;;        (ai-backup
-;;         (concat backup-dir "/history-ai-" timestamp ".json")))
-
-;;     ;; Create backup directory if it doesn't exist
-;;     (unless
-;;         (file-exists-p backup-dir)
-;;       (make-directory backup-dir t))
-
-;;     ;; Backup existing history files
-;;     (when
-;;         (file-exists-p genai-history-human-path)
-;;       (rename-file genai-history-human-path human-backup))
-;;     (when
-;;         (file-exists-p genai-history-ai-path)
-;;       (rename-file genai-history-ai-path ai-backup))
-
-;;     ;; Create new empty history files
-;;     (with-temp-file genai-history-human-path
-;;       (insert "[]"))
-;;     (with-temp-file genai-history-ai-path
-;;       (insert "[]"))
-;;     (message "GenAI history has been reset. Backups created in %s"
-;;              backup-dir)))
 
 (defun genai-reset-history ()
   "Backup and reset JSON and human-readable history."
@@ -1132,25 +1017,34 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 ;;           (process-file file)))
 ;;       contents)))
 
+;; whitelisted file extensions
+
 (defcustom genai-whitelist-extensions
-  '(".el" ".py" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org" ".yml"
+  '(".el" ".py" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org"
+    ".yml"
     ".yaml" ".json" ".conf")
-  "List of whitelisted file extensions for `genai--dired-get-contents'.")
+  "Allowed file extensions for dired prompts.")
+
+;; blacklisted directories or filenames
 
 (defcustom genai-blacklist-extensions
-  nil
-  "List of blacklisted file extensions for `genai--dired-get-contents'.")
+  '("__pycache__")
+  "Disallowed file/directory names for dired prompts.")
+
+;; optional path regexps to allow
 
 (defcustom genai-whitelist-expressions
   nil
-  "List of whitelisted path expressions (regexp strings or lambda) for `genai--dired-get-contents'.")
+  "Additional regexp or lambda to include files.")
+
+;; optional path regexps to exclude
 
 (defcustom genai-blacklist-expressions
   '("RUNNING" "FINISHED")
-  "List of blacklisted path expressions (regexp strings or lambda) for `genai--dired-get-contents'.")
+  "Regexp or lambda to exclude files.")
 
 (defun genai--match-path-expressions (file exprs)
-  ;; Return t if file matches any regexp in exprs
+  "Return non-nil if FILE matches any string regexp in EXPRS."
   (cl-some (lambda (expr)
              (and (stringp expr)
                   (string-match-p expr file)))
@@ -1158,7 +1052,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
 
 (defun genai--should-include-file
     (file white-ext black-ext white-expr black-expr size-limit)
-  ;; Return t if file should be included, otherwise nil
+  "Return t if FILE passes whitelist/blacklist and size LIMIT."
   (and
    (file-regular-p file)
    (not (genai--match-path-expressions file black-ext))
@@ -1169,12 +1063,9 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
    (< (file-attribute-size (file-attributes file)) size-limit)))
 
 (defun genai--dired-get-contents ()
-  "Recursively get contents of marked files on dired mode, handling only whitelisted files.
-If no files specified, just call ordinal genai-on-region"
+  "Recursively collect marked files in dired, applying safety filters."
   (let* ((marked-files
-          (dired-get-marked-files nil nil
-                                  (lambda (file)
-                                    (dired-file-marker file))))
+          (dired-get-marked-files nil nil #'dired-file-marker))
          (white-ext genai-whitelist-extensions)
          (black-ext genai-blacklist-extensions)
          (white-expr genai-whitelist-expressions)
@@ -1185,59 +1076,110 @@ If no files specified, just call ordinal genai-on-region"
         (read-string "Enter prompt: " "")
       (cl-labels
           ((process-file
-             (file)
+             (f)
              (cond
-              ((file-directory-p file)
-               (dolist (subfile (directory-files file t "^[^.]"))
-                 (process-file subfile)))
+              ((file-directory-p f)
+               (dolist (sub (directory-files f t "^[^.]"))
+                 (process-file sub)))
               ((genai--should-include-file
-                file white-ext black-ext white-expr black-expr
+                f white-ext black-ext white-expr black-expr
                 size-limit)
                (setq contents
                      (concat contents
-                             (format "\n\n;;; ----- %s -----\n\n" file)
+                             (format "\n\n;;; ----- %s -----\n\n" f)
                              (with-temp-buffer
-                               (insert-file-contents file)
+                               (insert-file-contents f)
                                (buffer-string))))))))
-        (dolist (file marked-files)
-          (process-file file)))
-      contents)))
+        (dolist (f marked-files)
+          (process-file f))
+        contents))))
+
+;; list safe marked files for selection
+(defun genai--dired-list-files ()
+  "List safe files from dired in a buffer for editing."
+  (let* ((marked-files
+          (dired-get-marked-files nil nil #'dired-file-marker))
+         (white-ext genai-whitelist-extensions)
+         (black-ext genai-blacklist-extensions)
+         (white-expr genai-whitelist-expressions)
+         (black-expr genai-blacklist-expressions)
+         (size-limit (* 1024 1024))
+         (candidates '())
+         (buf (get-buffer-create "*GenAI Files*")))
+    (unless marked-files
+      (user-error "No files marked"))
+    (cl-labels
+        ((process-file
+           (f)
+           (cond
+            ((file-directory-p f)
+             (dolist (sub (directory-files f t "^[^.]"))
+               (process-file sub)))
+            ((genai--should-include-file
+              f white-ext black-ext white-expr black-expr
+              size-limit)
+             (push (file-relative-name f default-directory)
+                   candidates)))))
+      (dolist (f marked-files)
+        (process-file f)))
+    (with-current-buffer buf
+      (erase-buffer)
+      (dolist (name (nreverse candidates))
+        (insert name "\n"))
+      (goto-char (point-min))
+      (text-mode)
+      (set (make-local-variable 'genai--dired-candidates)
+           candidates)
+      (local-set-key (kbd "C-c C-c")
+                     #'genai--dired-confirm-files))
+    (display-buffer buf)))
+
+;; confirm and send selected files
+(defun genai--dired-confirm-files ()
+  "Send edited file list to GenAI."
+  (interactive)
+  (let* ((lines (split-string (buffer-string) "\n" t))
+         (abs-files
+          (mapcar (lambda (n)
+                    (expand-file-name n default-directory))
+                  lines))
+         (contents
+          (mapconcat
+           (lambda (file)
+             (format "\n\n;;; ----- %s -----\n\n%s"
+                     file
+                     (with-temp-buffer
+                       (insert-file-contents file)
+                       (buffer-string))))
+           abs-files
+           "")))
+    (when (y-or-n-p (format "Send %d files? " (length abs-files)))
+      (kill-buffer)
+      (genai--run contents))))
 
 ;;;###autoload
 
-(defun genai-on-region
-    ()
-  "Run GenAI command on selected region, dired files or prompt.
-If a region is selected, use that text as the prompt.
-If in dired-mode with marked files, concatenate their contents.
-Otherwise, prompt the user to enter a prompt.
-The response will be displayed in the *GenAI* buffer."
+(defun genai-on-region ()
+  "Run GenAI on region, dired files or prompt."
   (interactive)
   (genai--init)
   (genai--ensure-dependencies)
   (genai-interactive-mode 1)
-  (let*
-      ((region-text
-        (cond
-         ((use-region-p)
-          (buffer-substring-no-properties
-           (region-beginning)
-           (region-end)))
-         ((eq major-mode 'dired-mode)
-          (genai--dired-get-contents))
-         (t
-          (read-string "Enter prompt: " ""))))
-       (genai-interactive-mode -1)
-       (buffer
-        (get-buffer-create "*GenAI*")))
-    (with-current-buffer buffer
-      (unless
-          (eq major-mode 'genai-mode)
-        (genai-mode)))
-    (when
-        (use-region-p)
-      (deactivate-mark))
-    (genai--run region-text)))
+  (cond
+   ((eq major-mode 'dired-mode)
+    (genai-interactive-mode -1)
+    (genai--dired-list-files))
+   ((use-region-p)
+    (let ((text (buffer-substring-no-properties
+                 (region-beginning)
+                 (region-end))))
+      (genai-interactive-mode -1)
+      (deactivate-mark)
+      (genai--run text)))
+   (t
+    (let ((input (read-string "Enter prompt: " "")))
+      (genai-interactive-mode -1)
+      (genai--run input)))))
 
 ;; (defun genai-on-region
 ;;     ()
@@ -1475,10 +1417,10 @@ The response will be displayed in the *GenAI* buffer."
 ;;; genai.el ends here
 
 
-(provide 'genai)
+(provide 'genai_v02_fix_dired)
 
 (when
     (not load-file-name)
-  (message "genai.el loaded."
+  (message "genai_v02_fix_dired.el loaded."
            (file-name-nondirectory
             (or load-file-name buffer-file-name))))
