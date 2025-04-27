@@ -1,9 +1,10 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-03-28 10:00:01>
+;;; Timestamp: <2025-04-25 16:44:29>
 ;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+
 
 ;; Copyright (C) 2024 Yusuke Watanabe
 ;; Author: Yusuke Watanabe <ywatanabe@alumni.u-tokyo.ac.jp>
@@ -270,7 +271,7 @@ Example: Template shortcuts can be customized as:
 
 (\"my\" . \"MyAwesomeTemplate\"))  ; my -> MyAwesomeTemplate.md")
 
-(defcustom genai-buffer-max-lines 1024
+(defcustom genai-buffer-max-lines (expt 2 14)
   "Maximum number of lines to keep in *GenAI* buffer."
   :type 'integer
   :group 'genai)
@@ -306,9 +307,12 @@ Example: Template shortcuts can be customized as:
          ((string= provider "groq")
           '("llama-3.3-70b-versatile" "deepseek-r1-distill-llama-70b"))
          ((string= provider "openai")
-          '("o3-mini" "o3-mini-low" "o3-mini-medium" "o3-mini-high"
+          '("o4-mini" "o4-mini-low" "o4-mini-medium" "o4-mini-high"
+            "o3" "o3-low" "o3-medium" "o3-high"
+            "o3-mini" "o3-mini-low" "o3-mini-medium" "o3-mini-high"
             "o1" "o1-low" "o1-medium" "o1-high"
             "o1-mini" "o1-mini-low" "o1-mini-medium" "o1-mini-high"
+            "gpt-4.1" "gpt-4.1-mini" "gpt-4.1-nano"
             "gpt-4o" "gpt-4o-mini"))))
        (selected-model
         (completing-read "Select model: " provider-models nil t)))
@@ -790,7 +794,7 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
        (num-interactions
         (cond
          ((null num-interactions)
-          "128")
+          "64")
          ((numberp num-interactions)
           (number-to-string num-interactions))
          ((stringp num-interactions)
@@ -910,55 +914,6 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
                                              (1+ genai--spinner-index)
                                              (length
                                               genai--spinner-frames)))))))))))))
-
-;; (defun genai--start-spinner
-;;     ()
-;;   "Start the spinner animation in the GenAI buffer."
-;;   (when
-;;       (and
-;;        (get-buffer "*GenAI*")
-;;        (not genai--spinner-timer))
-;;     (with-current-buffer "*GenAI*"
-;;       (goto-char
-;;        (point-max))
-;;       (when
-;;           (search-backward
-;;            (upcase genai-engine)
-;;            nil t)
-;;         (goto-char
-;;          (line-end-position))
-;;         ;; Create new marker and set its position
-;;         (setq genai--fixed-spinner-position
-;;               (point-marker))
-;;         ;; Ensure marker stays at buffer
-;;         (set-marker-insertion-type genai--fixed-spinner-position t)
-;;         (let
-;;             ((font-lock-mode nil))
-;;           (setq genai--spinner-timer
-;;                 (run-with-timer 0 0.1
-;;                                 (lambda
-;;                                   ()
-;;                                   (when
-;;                                       (and
-;;                                        (marker-position genai--fixed-spinner-position)
-;;                                        (marker-buffer genai--fixed-spinner-position))
-;;                                     (with-current-buffer "*GenAI*"
-;;                                       (save-excursion
-;;                                         (goto-char genai--fixed-spinner-position)
-;;                                         (let
-;;                                             ((inhibit-read-only t))
-;;                                           (delete-region
-;;                                            (point)
-;;                                            (line-end-position))
-;;                                           (insert
-;;                                            (propertize
-;;                                             (nth genai--spinner-index genai--spinner-frames)
-;;                                             'face
-;;                                             '(:foreground "blue")))
-;;                                           (setq genai--spinner-index
-;;                                                 (mod
-;;                                                  (1+ genai--spinner-index)
-;;                                                  (length genai--spinner-frames)))))))))))))))
 
 (defun genai--stop-spinner
     ()
@@ -1091,50 +1046,112 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
       (message "GenAI: Running...")
       (genai--start-python-process prompt)))))
 
-(defun genai--dired-get-contents
-    ()
-  "Get contents of marked files recursively, handling only safe files. If no files specified, just call ordinal genai-on-region"
-  (let*
-      ((marked-files
-        (dired-get-marked-files nil nil
-                                (lambda
-                                  (f)
-                                  (dired-file-marker f))))
-       (safe-extensions
-        '(".el" ".py" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org"
-          ".yml" ".yaml" ".json" ".log"))
-       (size-limit
-        (* 1024 1024))
-       (contents ""))
-    (if
-        (null marked-files)
+;; (defun genai--dired-get-contents ()
+;;   "Recursively get contents of marked files on dired mode, handling only safe files.
+;; If no files specified, just call ordinal genai-on-region"
+;;   (let* ((marked-files
+;;           (dired-get-marked-files nil nil
+;;                                   (lambda (f)
+;;                                     (dired-file-marker f))))
+;;          (safe-extensions
+;;           '(".el" ".py" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org"
+;;             ".yml" ".yaml" ".json" ".conf"))
+;;          (size-limit
+;;           (* 1024 1024))
+;;          (contents ""))
+;;     (if (null marked-files)
+;;         (read-string "Enter prompt: " "")
+;;       (cl-labels
+;;           ((process-file
+;;              (file)
+;;              (cond
+;;               ((file-directory-p file)
+;;                (dolist (f (directory-files file t "^[^.]"))
+;;                  (process-file f)))
+;;               ((and (file-regular-p file)
+;;                     (or (null (file-name-extension file))  ;; Allow files with no extension
+;;                         (member (file-name-extension file t)
+;;                                 safe-extensions))
+;;                     (< (file-attribute-size (file-attributes file))
+;;                        size-limit))
+;;                (setq contents
+;;                      (concat contents
+;;                              (format "\n\n;;; ----- %s -----\n\n" file)
+;;                              (with-temp-buffer
+;;                                (insert-file-contents file)
+;;                                (buffer-string))))))))
+;;         (dolist (file marked-files)
+;;           (process-file file)))
+;;       contents)))
+
+(defcustom genai-whitelist-extensions
+  '(".el" ".py" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org" ".yml"
+    ".yaml" ".json" ".conf")
+  "List of whitelisted file extensions for `genai--dired-get-contents'.")
+
+(defcustom genai-blacklist-extensions
+  nil
+  "List of blacklisted file extensions for `genai--dired-get-contents'.")
+
+(defcustom genai-whitelist-expressions
+  nil
+  "List of whitelisted path expressions (regexp strings or lambda) for `genai--dired-get-contents'.")
+
+(defcustom genai-blacklist-expressions
+  '("RUNNING" "FINISHED")
+  "List of blacklisted path expressions (regexp strings or lambda) for `genai--dired-get-contents'.")
+
+(defun genai--match-path-expressions (file exprs)
+  ;; Return t if file matches any regexp in exprs
+  (cl-some (lambda (expr)
+             (and (stringp expr)
+                  (string-match-p expr file)))
+           exprs))
+
+(defun genai--should-include-file
+    (file white-ext black-ext white-expr black-expr size-limit)
+  ;; Return t if file should be included, otherwise nil
+  (and
+   (file-regular-p file)
+   (not (genai--match-path-expressions file black-ext))
+   (not (genai--match-path-expressions file black-expr))
+   (or
+    (genai--match-path-expressions file white-ext)
+    (genai--match-path-expressions file white-expr))
+   (< (file-attribute-size (file-attributes file)) size-limit)))
+
+(defun genai--dired-get-contents ()
+  "Recursively get contents of marked files on dired mode, handling only whitelisted files.
+If no files specified, just call ordinal genai-on-region"
+  (let* ((marked-files
+          (dired-get-marked-files nil nil
+                                  (lambda (file)
+                                    (dired-file-marker file))))
+         (white-ext genai-whitelist-extensions)
+         (black-ext genai-blacklist-extensions)
+         (white-expr genai-whitelist-expressions)
+         (black-expr genai-blacklist-expressions)
+         (size-limit (* 1024 1024))
+         (contents ""))
+    (if (null marked-files)
         (read-string "Enter prompt: " "")
       (cl-labels
           ((process-file
              (file)
              (cond
               ((file-directory-p file)
-               (dolist
-                   (f
-                    (directory-files file t "^[^.]"))
-                 (process-file f)))
-              ((and
-                (file-regular-p file)
-                (member
-                 (file-name-extension file t)
-                 safe-extensions)
-                (<
-                 (file-attribute-size
-                  (file-attributes file))
-                 size-limit))
+               (dolist (subfile (directory-files file t "^[^.]"))
+                 (process-file subfile)))
+              ((genai--should-include-file
+                file white-ext black-ext white-expr black-expr
+                size-limit)
                (setq contents
                      (concat contents
                              (format "\n\n;;; ----- %s -----\n\n" file)
                              (with-temp-buffer
                                (insert-file-contents file)
                                (buffer-string))))))))
-        (dolist
-            (file marked-files)
+        (dolist (file marked-files)
           (process-file file)))
       contents)))
 
@@ -1408,6 +1425,7 @@ The response will be displayed in the *GenAI* buffer."
             'genai-send-buffer-input)
 
 ;;; genai.el ends here
+
 
 (provide 'genai)
 
