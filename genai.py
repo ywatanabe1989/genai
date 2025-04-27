@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-04-27 11:25:25 (ywatanabe)"
+# Timestamp: "2025-04-27 15:29:48 (ywatanabe)"
 # File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai.py
 # ----------------------------------------
 import os
@@ -202,11 +202,12 @@ def _save_human_readable_history(
         + entry["role"].replace("user", "YOU").replace("assistant", "GENAI")
         + "\n\n"
         + entry["content"]
+        + "\n"
         for entry in human_history
     ]
 
     # Saving as markdown
-    human_readable_history_str = "\n".join(human_readable_history_str_list)
+    human_readable_history_str = "".join(human_readable_history_str_list)
     human_readable_history_path = human_history_path.replace(
         "human", "human-readable"
     ).replace(".json", ".md")
