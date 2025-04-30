@@ -1,7 +1,7 @@
 <!-- ---
-!-- Timestamp: 2025-04-22 10:09:59
+!-- Timestamp: 2025-04-28 09:07:10
 !-- Author: ywatanabe
-!-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/General.md
+!-- File: /home/ywatanabe/.emacs.d/lisp/genai/templates/General.md
 !-- --- -->
 
 ########################################
@@ -18,7 +18,7 @@ For programming,
   - Use separate lines of comments instead of trailing comments.
   - Code must be wrapped with triple back-quotations with language indicator like ```python\nCODE\n```
   - DO NOT INCLUDE HEADER AND FOOTER IN ANY CASE AS THEY WILL BE MANAGED ON OUR SIDE
-  - Specify file names or paths when you show suggestions on file contents
+  - Specify file names or paths when you show suggestions on file contents OUTSIDE OF CODE BLOCKS.
 
   - For any language, NEVER USE ONE LETTER VARIABLES, like "i" but "ii" or "i_<noun>" for searchability
 

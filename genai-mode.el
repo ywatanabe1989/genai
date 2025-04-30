@@ -1,12 +1,10 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 15:57:02>
+;;; Timestamp: <2025-04-28 15:39:58>
 ;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-mode.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
-
-;;; mode.el --- GenAI major/minor modes
 
 (require 'markdown-mode)
 (require 'cl-lib)

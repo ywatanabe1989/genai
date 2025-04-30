@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 15:44:52>
+;;; Timestamp: <2025-04-30 12:24:35>
 ;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-process.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -181,13 +181,46 @@ PROMPT is the user's input, TEMPLATE-TYPE is the selected template."
     (genai--stop-spinner)
     (message "Error: %s" msg)))
 
+;; (defun genai--process-filter (proc output)
+;;   "Insert PROC OUTPUT and remove ANSI escapes immediately."
+;;   (with-current-buffer (process-buffer proc)
+;;     (let ((start (point-max)))
+;;       (goto-char start)
+;;       (insert output)
+;;       (ansi-color-apply-on-region start (point-max)))))
+
 (defun genai--process-filter (proc output)
-  "Insert PROC OUTPUT and remove ANSI escapes immediately."
+  "Insert PROC OUTPUT without moving cursor or scrolling window.
+Processes ANSI escapes but maintains cursor position."
   (with-current-buffer (process-buffer proc)
-    (let ((start (point-max)))
-      (goto-char start)
-      (insert output)
-      (ansi-color-apply-on-region start (point-max)))))
+    (let ((inhibit-read-only t)
+          (orig-point (point))
+          (window (get-buffer-window (current-buffer)))
+          (window-point (when (get-buffer-window (current-buffer))
+                          (window-point
+                           (get-buffer-window (current-buffer)))))
+          (buffer-max-size genai-buffer-max-lines)
+          (start (point-max)))
+
+      ;; Insert the output at buffer end
+      (save-excursion
+        (goto-char start)
+        (insert output)
+        (ansi-color-apply-on-region start (point-max)))
+
+      ;; Truncate buffer if necessary but don't scroll
+      (when (> (count-lines (point-min) (point-max)) buffer-max-size)
+        (save-excursion
+          (goto-char (point-max))
+          (forward-line (- buffer-max-size))
+          (delete-region (point-min) (point))))
+
+      ;; Restore cursor position
+      (goto-char orig-point)
+
+      ;; Restore window point if needed
+      (when (and window window-point)
+        (set-window-point window window-point)))))
 
 ;; (defun genai--start-python-process (prompt)
 ;;   "Start GenAI with PROMPT."
