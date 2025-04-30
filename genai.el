@@ -5,7 +5,6 @@
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
-
 ;;; genai.el --- Main entry for GenAI package
 
 ;; (add-to-list 'load-path (file-name-directory load-file-name))
@@ -19,7 +18,6 @@
 (require 'genai-history)
 (require 'genai-llm)
 (require 'genai-spinner)
-
 
 (provide 'genai)
 
