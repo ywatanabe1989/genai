@@ -5,7 +5,6 @@
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
-
 ;;; variables.el --- GenAI customizable variables
 
 (defgroup genai nil
@@ -112,13 +111,12 @@
   "Regexp or lambda to exclude files.")
 
 (defcustom genai-buffer-name
-  genai-buffer-name
-  "")
+  "*GenAI*"
+  "Main buffer name for genai package")
 
 (defcustom genai-buffer-name-history
-  genai-buffer-name-history
-  "")
-
+  "*GenAI History*"
+  "History buffer name for genai package")
 
 (provide 'genai-variables)
 
