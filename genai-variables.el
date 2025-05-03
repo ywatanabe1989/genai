@@ -1,9 +1,10 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 15:57:18>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-variables.el
+;;; Timestamp: <2025-04-30 13:12:30>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-variables.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+
 
 ;;; variables.el --- GenAI customizable variables
 
@@ -83,7 +84,7 @@
   "End of code block.")
 
 (defcustom genai-whitelist-extensions
-  '(".el" ".py" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org"
+  '(".el" ".py" "ipynb" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org"
     ".yml"
     ".yaml" ".json" ".conf")
   "Allowed file extensions for dired prompts.")
@@ -117,6 +118,7 @@
 (defcustom genai-buffer-name-history
   "*GenAI History*"
   "History buffer name for genai package")
+
 
 (provide 'genai-variables)
 
