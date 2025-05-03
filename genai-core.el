@@ -31,17 +31,59 @@
                  (region-beginning) (region-end))
               (deactivate-mark)))
            (t
-            (read-string "Enter prompt: " ""))))
-         (template-type
-          (when prompt-text
-            (genai--select-template))))
+            (read-string "Enter prompt: " "")))))
     
-    ;; Only run if we have both text and template
-    (when (and prompt-text template-type)
+    ;; Special shortcut cases - handle before template selection
+    (cond
+     ((equal prompt-text "g")
       (genai-interactive-mode -1)
-      ;; Now do the dependency check after template selection
+      (switch-to-buffer-other-window genai-buffer-name)
+      (keyboard-quit) 
+      (message "Jumped to *GenAI*"))
+     ((equal prompt-text "h")
+      (genai-interactive-mode -1)
+      (genai-show-history) 
+      (keyboard-quit)
+      (message "Showing history"))
+     ;; Continue with template selection for normal prompts
+     ((and prompt-text
+           (setq template-type (genai--select-template)))
+      (genai-interactive-mode -1)
       (genai--ensure-dependencies)
-      (genai--run-with-template prompt-text template-type))))
+      (genai--run-with-template prompt-text template-type)))))
+
+;; (defun genai-on-region ()
+;;   "Run GenAI on region, dired or prompt."
+;;   (interactive)
+;;   (genai-interactive-mode 1)
+;;   (let* ((marked-files
+;;           (and (eq major-mode 'dired-mode)
+;;                (condition-case nil
+;;                   (dired-get-marked-files nil nil)
+;;                   (user-error nil))))
+;;          (prompt-text
+;;           (cond
+;;            ((< 1 (length marked-files))
+;;             (genai-interactive-mode -1)
+;;             (genai-on-region-list-files)
+;;             nil)  ; Return nil to signal we're handling it separately
+;;            ((use-region-p)
+;;             (prog1
+;;                 (buffer-substring-no-properties
+;;                  (region-beginning) (region-end))
+;;               (deactivate-mark)))
+;;            (t
+;;             (read-string "Enter prompt: " ""))))
+;;          (template-type
+;;           (when prompt-text
+;;             (genai--select-template))))
+    
+;;     ;; Only run if we have both text and template
+;;     (when (and prompt-text template-type)
+;;       (genai-interactive-mode -1)
+;;       ;; Now do the dependency check after template selection
+;;       (genai--ensure-dependencies)
+;;       (genai--run-with-template prompt-text template-type))))
 
 ;; ;;;###autoload
 ;; (defun genai-on-region ()
@@ -206,32 +248,6 @@
         (dolist (blk (reverse blocks))
           (kill-new blk))
         (message "Copied %d blocks" (length blocks))))))
-
-;; (defun genai-next-code-block ()
-;;   "Navigate to and copy next code block."
-;;   (interactive)
-;;   (with-current-buffer genai-buffer-name
-;;     (end-of-line)
-;;     (when (looking-at-p genai--code-block-end-delimiter)
-;;       (forward-line) (beginning-of-line))
-;;     (when (re-search-forward genai--code-block-start-delimiter nil t)
-;;       (let ((start (point)))
-;;         (re-search-forward genai--code-block-end-delimiter nil t)
-;;         (kill-ring-save start (match-beginning 0))
-;;         (message "Copied code block")))))
-
-;; (defun genai-previous-code-block ()
-;;   "Navigate to and copy previous code block."
-;;   (interactive)
-;;   (with-current-buffer genai-buffer-name
-;;     (when (re-search-backward genai--code-block-end-delimiter nil t)
-;;       (let ((end (point)))
-;;         (when
-;;             (re-search-backward genai--code-block-start-delimiter nil
-;;                                 t)
-;;           (forward-line 1)
-;;           (kill-ring-save (point) end)
-;;           (message "Copied code block"))))))
 
 ;;;###autoload
 (defun genai-next-code-block
