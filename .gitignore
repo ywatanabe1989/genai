@@ -581,3 +581,26 @@ history-ai-secret.json
 _history-human-secret.json
 history-human-secret.json
 dev.md
+docs/to_claude
+
+### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/MyEmacs.gitignore ###
+**/*~undo-tree~
+**/undohist/*
+
+### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/Apptainer.gitignore ###
+**/*.log
+**/*.sandbox/*
+**/*.sif
+**/build-temp-*
+
+### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/Django.gitignore ###
+./staticfiles*
+./static/bootstrap*
+
+### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/SQL.gitignore ###
+**/*.db
+*.db-shm
+*.db-wal
+
+### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/GitKeep.gitignore ###
+!.gitkeep

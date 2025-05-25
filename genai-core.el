@@ -52,67 +52,6 @@
       (genai--ensure-dependencies)
       (genai--run-with-template prompt-text template-type)))))
 
-;; (defun genai-on-region ()
-;;   "Run GenAI on region, dired or prompt."
-;;   (interactive)
-;;   (genai-interactive-mode 1)
-;;   (let* ((marked-files
-;;           (and (eq major-mode 'dired-mode)
-;;                (condition-case nil
-;;                   (dired-get-marked-files nil nil)
-;;                   (user-error nil))))
-;;          (prompt-text
-;;           (cond
-;;            ((< 1 (length marked-files))
-;;             (genai-interactive-mode -1)
-;;             (genai-on-region-list-files)
-;;             nil)  ; Return nil to signal we're handling it separately
-;;            ((use-region-p)
-;;             (prog1
-;;                 (buffer-substring-no-properties
-;;                  (region-beginning) (region-end))
-;;               (deactivate-mark)))
-;;            (t
-;;             (read-string "Enter prompt: " ""))))
-;;          (template-type
-;;           (when prompt-text
-;;             (genai--select-template))))
-    
-;;     ;; Only run if we have both text and template
-;;     (when (and prompt-text template-type)
-;;       (genai-interactive-mode -1)
-;;       ;; Now do the dependency check after template selection
-;;       (genai--ensure-dependencies)
-;;       (genai--run-with-template prompt-text template-type))))
-
-;; ;;;###autoload
-;; (defun genai-on-region ()
-;;   "Run GenAI on region, dired or prompt."
-;;   (interactive)
-;;   (genai--init)
-;;   (genai--ensure-dependencies)
-;;   (genai-interactive-mode 1)
-;;   (let ((marked-files
-;;          (and (eq major-mode 'dired-mode)
-;;               (condition-case nil
-;;                   (dired-get-marked-files nil nil)
-;;                 (user-error nil)))))
-;;     (cond
-;;      ((< 1 (length marked-files))
-;;       (genai-interactive-mode -1)
-;;       (genai-on-region-list-files))
-;;      ((use-region-p)
-;;       (let ((text
-;;              (buffer-substring-no-properties
-;;               (region-beginning) (region-end))))
-;;         (genai-interactive-mode -1)
-;;         (deactivate-mark)
-;;         (genai--run text)))
-;;      (t
-;;       (let ((input (read-string "Enter prompt: " "")))
-;;         (genai-interactive-mode -1)
-;;         (genai--run input))))))
-
 (defun genai--run (prompt)
   "Dispatch PROMPT to process or history commands."
   (genai--history-reset-if-large)
@@ -314,7 +253,6 @@
              end)
             (message "Copied."))
         (deactivate-mark)))))
-                                        ;)
 
 
 (provide 'genai-core)

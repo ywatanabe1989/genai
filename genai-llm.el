@@ -1,7 +1,7 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 14:27:13>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-llm.el
+;;; Timestamp: <2025-05-25 01:59:43>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-llm.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
@@ -61,7 +61,9 @@
       ((provider-models
         (cond
          ((string= provider "anthropic")
-          '("claude-3-7-sonnet-20250219"
+          '("claude-opus-4-20250514"
+            "claude-sonnet-4-20250514"
+            "claude-3-7-sonnet-20250219"
             "claude-3-5-sonnet-20241022"
             "claude-3-5-haiku-20241022"))
          ((string= provider "google")

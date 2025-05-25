@@ -1,7 +1,7 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-30 12:24:35>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-process.el
+;;; Timestamp: <2025-05-14 02:52:35>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-process.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
@@ -45,38 +45,88 @@
 ;;                          genai-python-bin-path ver)))
 ;;             (lambda (_) (message "mngs installed.")))))))))
 
-(cl-defun genai--check-python-dependencies
-    ()
-  "Check if python mngs package is installed."
-  (let*
-      ((mngs-version "1.9.8")
-       (check-command
-        (format
-         "%s -c 'import pkg_resources; pkg_resources.require(\"mngs==%s\")'"
-         genai-python-bin-path mngs-version)))
-    (async-start
-     `(lambda
-        ()
-        (shell-command-to-string ,check-command))
-     (lambda
-       (result)
-       (if
-           (string-match "DistributionNotFound\\|VersionConflict"
-                         result)
+;; (cl-defun genai--check-python-dependencies
+;;     ()
+;;   "Check if python mngs package is installed."
+;;   (let*
+;;       ((mngs-version "1.9.8")
+;;        (check-command
+;;         (format
+;;          "%s -c 'import pkg_resources; pkg_resources.require(\"mngs==%s\")'"
+;;          genai-python-bin-path mngs-version)))
+;;     (async-start
+;;      `(lambda
+;;         ()
+;;         (shell-command-to-string ,check-command))
+;;      (lambda
+;;        (result)
+;;        (if
+;;            (string-match "DistributionNotFound\\|VersionConflict"
+;;                          result)
+;;            (when
+;;                (yes-or-no-p
+;;                 (format
+;;                  "The required Python package 'mngs>=%s' is not installed or outdated for %s. Install/upgrade it now?"
+;;                  mngs-version genai-python-bin-path))
+;;              (async-start
+;;               `(lambda
+;;                  ()
+;;                  (shell-command-to-string
+;;                   ,(format "%s -m pip install 'mngs>=%s'"
+;;                            genai-python-bin-path mngs-version)))
+;;               (lambda
+;;                 (_)
+;;                 (message "Package installed/upgraded.")))))))))
+
+(defvar --my/python-dependency-last-check-file
+  (expand-file-name ".last-python-dep-check" user-emacs-directory)
+  "File to store the timestamp of the last dependency check.")
+
+(cl-defun genai--check-python-dependencies ()
+  "Check if python mngs package is installed, but only once per day."
+  (let* ((current-time (float-time))
+         (one-day-seconds (* 24 60 60))
+         (1-week-seconds (* 7 one-day-seconds))
+         (should-check t))
+
+    ;; Check if we've already verified in the last day
+    (when (file-exists-p --my/python-dependency-last-check-file)
+      (with-temp-buffer
+        (insert-file-contents --my/python-dependency-last-check-file)
+        (when (> (buffer-size) 0)
+          (let ((last-check-time (string-to-number (buffer-string))))
+            (when (< (- current-time last-check-time) 1-week-seconds)
+              (setq should-check nil))))))
+
+    (when should-check
+      (let* ((mngs-version "1.9.8")
+             (check-command
+              (format
+               "%s -c 'import pkg_resources; pkg_resources.require(\"mngs==%s\")'"
+               genai-python-bin-path mngs-version)))
+
+        ;; Save the current time to file
+        (with-temp-file --my/python-dependency-last-check-file
+          (insert (number-to-string current-time)))
+
+        (async-start
+         `(lambda ()
+            (shell-command-to-string ,check-command))
+         (lambda (result)
            (when
-               (yes-or-no-p
-                (format
-                 "The required Python package 'mngs>=%s' is not installed or outdated for %s. Install/upgrade it now?"
-                 mngs-version genai-python-bin-path))
-             (async-start
-              `(lambda
-                 ()
-                 (shell-command-to-string
-                  ,(format "%s -m pip install 'mngs>=%s'"
-                           genai-python-bin-path mngs-version)))
-              (lambda
-                (_)
-                (message "Package installed/upgraded.")))))))))
+               (string-match "DistributionNotFound\\|VersionConflict"
+                             result)
+             (when (yes-or-no-p
+                    (format
+                     "The required Python package 'mngs>=%s' is not installed or outdated for %s. Install/upgrade it now?"
+                     mngs-version genai-python-bin-path))
+               (async-start
+                `(lambda ()
+                   (shell-command-to-string
+                    ,(format "%s -m pip install 'mngs>=%s'"
+                             genai-python-bin-path mngs-version)))
+                (lambda (_)
+                  (message "Package installed/upgraded.")))))))))))
 
 (defun genai--safe-shell-quote-argument (arg)
   "Quote ARG if non-empty."

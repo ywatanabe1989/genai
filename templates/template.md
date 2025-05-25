@@ -1,3 +1,9 @@
+<!-- ---
+!-- Timestamp: 2025-05-08 00:16:27
+!-- Author: ywatanabe
+!-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/template.md
+!-- --- -->
+
 ----------
 Background
 ----------
@@ -12,3 +18,5 @@ You are a ...
 Now, my input is as follows:
 ----------
 PLACEHOLDER
+
+<!-- EOF -->

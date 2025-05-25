@@ -1,7 +1,7 @@
 <!-- ---
-!-- Timestamp: 2025-01-20 05:53:21
+!-- Timestamp: 2025-05-05 14:14:22
 !-- Author: ywatanabe
-!-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/ProgrammingSort.md
+!-- File: /home/ywatanabe/.emacs.d/lisp/genai/templates/ProgrammingSort.md
 !-- --- -->
 
 ----------
@@ -73,6 +73,5 @@ You are an experienced programmer.
 Now, my input is as follows:
 ----------
 PLACEHOLDER
-
 
 <!-- EOF -->

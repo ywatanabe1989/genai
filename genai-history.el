@@ -12,7 +12,6 @@
 (require 'genai-core)
 
 ;;;###autoload
-
 (defun genai-show-history ()
   "Open human-readable history."
   (interactive)
@@ -20,7 +19,6 @@
   (genai-mode))
 
 ;;;###autoload
-
 (defun genai-reset-history ()
   "Backup and reset JSON and human-readable history."
   (interactive)

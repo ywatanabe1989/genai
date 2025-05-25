@@ -30,7 +30,6 @@
     (genai-interactive-mode -1)))
 
 ;;;###autoload
-
 (defun genai-next-code-block
     ()
   "Navigate to the next code block and select the content"
@@ -65,7 +64,6 @@
       (deactivate-mark))))
 
 ;;;###autoload
-
 (defun genai-previous-code-block
     ()
   "Navigate to the previous code block and select the content"
