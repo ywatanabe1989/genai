@@ -604,3 +604,4 @@ docs/to_claude
 
 ### Source: /home/ywatanabe/.git-templates/.gitignore-templates/Custom/GitKeep.gitignore ###
 !.gitkeep
+._tmp

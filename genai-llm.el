@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-05-25 01:59:43>
+;;; Timestamp: <2025-08-10 07:50:10>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-llm.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -61,18 +61,19 @@
       ((provider-models
         (cond
          ((string= provider "anthropic")
-          '("claude-opus-4-20250514"
+          '("claude-opus-4-1-20250805"
+            "claude-opus-4-20250514"
             "claude-sonnet-4-20250514"
             "claude-3-7-sonnet-20250219"
             "claude-3-5-sonnet-20241022"
             "claude-3-5-haiku-20241022"))
          ((string= provider "google")
-          '("gemini-2.5-pro-exp-03-25"
-            "gemini-2.0-flash-exp"
+          '("gemini-2.5-pro"
+            "gemini-2.5-flash"
+            "gemini-2.5-flash-lite"
+            "gemini-2.0-pro"
             "gemini-2.0-flash"
-            "gemini-2.0-flash-lite-preview-02-05"
-            "gemini-2.0-pro-exp-02-05"
-            "gemini-2.0-flash-thinking-exp-01-21"
+            "gemini-2.0-flash-lite"
             ))
          ((string= provider "deepseek")
           '("deepseek-chat" "deepseek-coder" "deepseek-reasoner"))

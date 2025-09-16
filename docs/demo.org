@@ -161,4 +161,4 @@ def read_csv_file(file_path):
 - M-x genai-show-history RET
 
 ** Dependencies
-- Python and a Python package called 'mngs==1.5.5'
+- Python and a Python package called 'scitex==1.5.5'

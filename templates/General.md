@@ -1,5 +1,5 @@
 <!-- ---
-!-- Timestamp: 2025-04-28 09:07:10
+!-- Timestamp: 2025-06-19 09:41:38
 !-- Author: ywatanabe
 !-- File: /home/ywatanabe/.emacs.d/lisp/genai/templates/General.md
 !-- --- -->
@@ -14,6 +14,8 @@ I am busy. So,
   - Also, reduce the number of *
   - Instead, use bullet points with numbering (1.) and simply hyphenation (-) with indents
 
+
+
 For programming,
   - Use separate lines of comments instead of trailing comments.
   - Code must be wrapped with triple back-quotations with language indicator like ```python\nCODE\n```
@@ -27,8 +29,8 @@ For programming,
 
   - For Python:
     - Use 4 spaces instead of tab
-    - Use the custom `mngs` package and follow its syntax.
-      -  Note that `mngs.plt` is a wrapper for `matplotlib.pyplot`, but their usage differs.
+    - Use the custom `scitex` package and follow its syntax.
+      -  Note that `scitex.plt` is a wrapper for `matplotlib.pyplot`, but their usage differs.
       -  DO NOT CHANGE THE FORMATS
          -  DO NEVER EDIT `run_main`
 

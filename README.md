@@ -34,7 +34,7 @@ git clone git@github.com:ywatanabe1989/emacs-genai.git $EMACS_GENAI_DIR
 
 ## Dependencies
 ```bash
-pip install "mngs==1.9.8"
+pip install "scitex==1.9.8"
 ```
 
 ## Functions

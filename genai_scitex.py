@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-05-26 08:07:52 (ywatanabe)"
-# File: /home/ywatanabe/.emacs.d/lisp/genai/genai_claude.py
+# Timestamp: "2025-06-24 19:29:42 (ywatanabe)"
+# File: /home/ywatanabe/.emacs.d/lisp/genai/genai_mngs.py
 # ----------------------------------------
 import os
 __FILE__ = (
-    "./genai_claude.py"
+    "./genai_mngs.py"
 )
 __DIR__ = os.path.dirname(__FILE__)
 # ----------------------------------------
-
-import subprocess
-import sys
 
 """
 Provides an interface for interacting with GenAI APIs (e.g., Gemini).
@@ -33,16 +30,16 @@ Key features:
 import argparse
 import warnings
 
-from mngs.ai import GenAI as mngs_ai_GenAI
-from mngs.io import glob as mngs_io_glob
-from mngs.io import load as mngs_io_load
-from mngs.io import save as mngs_io_save
-from mngs.path import split as mngs_path_split
+from scitex.ai import GenAI as scitex_ai_GenAI
+from scitex.io import glob as scitex_io_glob
+from scitex.io import load as scitex_io_load
+from scitex.io import save as scitex_io_save
+from scitex.path import split as scitex_path_split
 
 ## Parameters
-TEMPLATE_DIR = mngs_path_split(__file__)[0] + "./templates/"
+TEMPLATE_DIR = scitex_path_split(__file__)[0] + "./templates/"
 
-GENERAL_INSTRUCTION = mngs_io_load(os.path.join(TEMPLATE_DIR, "General.md"))
+GENERAL_INSTRUCTION = scitex_io_load(os.path.join(TEMPLATE_DIR, "General.md"))
 
 
 # ------------------------------
@@ -71,7 +68,7 @@ def run_genai(
     )
 
     # Model initialization
-    llm = mngs_ai_GenAI(
+    llm = scitex_ai_GenAI(
         model=engine,
         api_key=api_keys,
         stream=True,
@@ -89,38 +86,15 @@ def run_genai(
     ai_prompt = GENERAL_INSTRUCTION + _prompt_embedded
 
     # Main
-    # # Replace this line in run_genai function:
-    # llm_out = subprocess.run(
-    #     ["claude", "-p", ai_prompt], capture_output=True, text=True
-    # ).stdout.strip()
-
-    # Replace the subprocess call:
-    process = subprocess.Popen(
-        ["claude", "-p", ai_prompt],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-
-    llm_out = ""
-    for line in iter(process.stdout.readline, ""):
-        print(line, end="")
-        sys.stdout.flush()
-        llm_out += line
-
-    process.wait()
-
-    # llm_out = llm(ai_prompt)
+    llm_out = llm(ai_prompt)
+    # print(llm_out)
 
     # Update chat histories
     _save_updated_human_history(
         human_history, human_history_path, template_type, prompt, llm_out
     )
     _save_human_readable_history(human_history, human_history_path)
-    # _save_updated_ai_history(ai_history, ai_history_path, llm)
-    _save_updated_ai_history_claude(
-        ai_history, ai_history_path, prompt, llm_out
-    )
+    _save_updated_ai_history(ai_history, ai_history_path, llm)
 
 
 # ------------------------------
@@ -131,7 +105,8 @@ def _handle_prompt_and_prompt_file(prompt, prompt_file):
         prompt = ""
 
     if prompt_file:
-        prompt = str(prompt) + "\n\n" + "\n".join(mngs_io_load(prompt_file))
+        # prompt = str(prompt) + "\n\n" + "\n".join(scitex_io_load(prompt_file))
+        prompt = str(prompt) + "\n\n" + "".join(scitex_io_load(prompt_file))
 
     return prompt
 
@@ -139,7 +114,7 @@ def _handle_prompt_and_prompt_file(prompt, prompt_file):
 def _load_histories(human_history_path, ai_history_path):
     def _load_or_create_history(history_path):
         try:
-            history = mngs_io_load(history_path)
+            history = scitex_io_load(history_path)
         except Exception as e:
             warnings.warn(
                 str(e) + f"\nCreating new history file: {history_path}"
@@ -165,17 +140,17 @@ def _format_history(ai_history):
 
 
 def load_templates():
-    TEMPLATE_DIR = mngs_path_split(__file__)[0] + "./templates/"
-    TEMPLATE_PATHS = mngs_io_glob(TEMPLATE_DIR.replace("/./", "/") + "*")
+    TEMPLATE_DIR = scitex_path_split(__file__)[0] + "./templates/"
+    TEMPLATE_PATHS = scitex_io_glob(TEMPLATE_DIR.replace("/./", "/") + "*")
 
     TEMPLATE_NAMES = [
-        "".join(mngs_path_split(tp)[1:]) for tp in TEMPLATE_PATHS
+        "".join(scitex_path_split(tp)[1:]) for tp in TEMPLATE_PATHS
     ]
 
     TEMPLATES = {}
     for lpath, fname in zip(TEMPLATE_PATHS, TEMPLATE_NAMES):
         template_type = fname.split(".")[0]
-        prompt = mngs_io_load(lpath, verbose=False)
+        prompt = scitex_io_load(lpath, verbose=False)
         TEMPLATES[template_type] = prompt
 
     return TEMPLATES
@@ -192,23 +167,15 @@ def _save_updated_human_history(
     )
     human_history.append({"role": "assistant", "content": llm_out})
     human_history = _format_history(human_history)
-    mngs_io_save(human_history, human_history_path, verbose=False)
+    scitex_io_save(human_history, human_history_path, verbose=False)
 
 
-# def _save_updated_ai_history(ai_history, ai_history_path, model):
-#     n_new_history = 2
-#     for history in model.history[-n_new_history:]:
-#         ai_history.append(history)
-#     ai_history = _format_history(ai_history)
-#     mngs_io_save(ai_history, ai_history_path, verbose=False)
-# Add this new function:
-def _save_updated_ai_history_claude(
-    ai_history, ai_history_path, user_prompt, assistant_response
-):
-    ai_history.append({"role": "user", "content": user_prompt})
-    ai_history.append({"role": "assistant", "content": assistant_response})
+def _save_updated_ai_history(ai_history, ai_history_path, model):
+    n_new_history = 2
+    for history in model.history[-n_new_history:]:
+        ai_history.append(history)
     ai_history = _format_history(ai_history)
-    mngs_io_save(ai_history, ai_history_path, verbose=False)
+    scitex_io_save(ai_history, ai_history_path, verbose=False)
 
 
 def _get_template(template_type):
@@ -246,7 +213,7 @@ def _save_human_readable_history(
     human_readable_history_path = human_history_path.replace(
         "human", "human-readable"
     ).replace(".json", ".md")
-    mngs_io_save(
+    scitex_io_save(
         human_readable_history_str, human_readable_history_path, verbose=False
     )
 
@@ -321,7 +288,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--human_history_path",
         type=str,
-        default=mngs_path_split(__file__)[0] + "./history-human-secret.json",
+        default=scitex_path_split(__file__)[0] + "./history-human-secret.json",
         help="(default: %(default)s)",
     )
 

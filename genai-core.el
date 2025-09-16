@@ -1,7 +1,7 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-28 15:40:57>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-core.el
+;;; Timestamp: <2025-08-28 05:37:47>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-core.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
@@ -23,8 +23,8 @@
           (cond
            ((< 1 (length marked-files))
             (genai-interactive-mode -1)
-            (genai-on-region-list-files)
-            nil)  ; Return nil to signal we're handling it separately
+            (genai-dired-copy-contents)
+            nil)
            ((use-region-p)
             (prog1
                 (buffer-substring-no-properties
@@ -32,8 +32,6 @@
               (deactivate-mark)))
            (t
             (read-string "Enter prompt: " "")))))
-    
-    ;; Special shortcut cases - handle before template selection
     (cond
      ((equal prompt-text "g")
       (genai-interactive-mode -1)
@@ -45,16 +43,17 @@
       (genai-show-history) 
       (keyboard-quit)
       (message "Showing history"))
-     ;; Continue with template selection for normal prompts
      ((and prompt-text
            (setq template-type (genai--select-template)))
       (genai-interactive-mode -1)
       (genai--ensure-dependencies)
       (genai--run-with-template prompt-text template-type)))))
 
+
 (defun genai--run (prompt)
   "Dispatch PROMPT to process or history commands."
-  (genai--history-reset-if-large)
+  ;; (genai--history-reset-if-large)
+  (genai--history-cycle-if-large)  
   (cond
    ((equal prompt "g")
     (switch-to-buffer-other-window genai-buffer-name)
@@ -82,7 +81,8 @@
 
 (defun genai--run-with-template (prompt template-type)
   "Run GenAI with PROMPT and specified TEMPLATE-TYPE."
-  (genai--history-reset-if-large)
+  ;; (genai--history-reset-if-large)
+  (genai--history-cycle-if-large)
   (cond
    ((equal prompt "g")
     (switch-to-buffer-other-window genai-buffer-name)
@@ -96,17 +96,55 @@
       (font-lock-ensure)
       (genai--start-python-process-with-template prompt template-type)))))
 
+
 (defun genai--start-python-process-with-template (prompt template-type)
   "Start GenAI with PROMPT and TEMPLATE-TYPE."
   (when (process-live-p genai--process)
     (delete-process genai--process))
-  (let* ((cmd (genai--construct-python-command-with-template prompt template-type))
-         (proc
-          (start-process-shell-command "genai" genai-buffer-name cmd)))
+  (let* ((safe-dir (or (and default-directory 
+                            (file-exists-p default-directory)
+                            default-directory)
+                       (expand-file-name "~/")
+                       "/"))
+         (cmd (genai--construct-python-command-with-template prompt template-type))
+         (default-directory safe-dir)
+         (proc (start-process-shell-command "genai" genai-buffer-name cmd)))
     (setq genai--process proc)
     (set-process-filter proc #'genai--process-filter)
     (set-process-sentinel proc #'genai--process-sentinel)
     (genai--start-spinner)))
+
+;; (defun genai--start-python-process-with-template (prompt template-type)
+;;   "Start GenAI with PROMPT and TEMPLATE-TYPE."
+;;   (when (process-live-p genai--process)
+;;     (delete-process genai--process))
+;;   (let* ((cmd (genai--construct-python-command-with-template prompt template-type))
+;;          (proc
+;;           (start-process-shell-command "genai" genai-buffer-name cmd)))
+;;     (setq genai--process proc)
+;;     (set-process-filter proc #'genai--process-filter)
+;;     (set-process-sentinel proc #'genai--process-sentinel)
+;;     (genai--start-spinner)))
+
+
+;; (defun genai--start-python-process-with-template
+;;     (prompt template-type)
+;;   "Start GenAI with PROMPT and TEMPLATE-TYPE."
+;;   (when (process-live-p genai--process)
+;;     (delete-process genai--process))
+;;   (let*
+;;       ((cmd
+;;         (genai--construct-python-command-with-template prompt
+;;                                                        template-type))
+;;        (default-directory (progn
+;;                             (genai--ensure-valid-directory)
+;;                             default-directory))
+;;        (proc
+;;         (start-process-shell-command "genai" genai-buffer-name cmd)))
+;;     (setq genai--process proc)
+;;     (set-process-filter proc #'genai--process-filter)
+;;     (set-process-sentinel proc #'genai--process-sentinel)
+;;     (genai--start-spinner)))
 
 (defun genai--construct-python-command-with-template (prompt template-type)
   "Construct command with PROMPT and TEMPLATE-TYPE."

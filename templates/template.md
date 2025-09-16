@@ -1,7 +1,7 @@
 <!-- ---
-!-- Timestamp: 2025-05-08 00:16:27
+!-- Timestamp: 2025-06-19 09:41:49
 !-- Author: ywatanabe
-!-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/templates/template.md
+!-- File: /home/ywatanabe/.emacs.d/lisp/genai/templates/template.md
 !-- --- -->
 
 ----------
