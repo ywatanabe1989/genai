@@ -1,7 +1,7 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-05-08 00:20:10>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-templates.el
+;;; Timestamp: <2025-09-16 17:57:04>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-templates.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
@@ -132,10 +132,6 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
                  (string-blank-p input)
                  "None"
                input))))
-        (unless
-            (string= input "r")
-          (display-buffer
-           (get-buffer-create genai-buffer-name)))
         template-type))))
 
 

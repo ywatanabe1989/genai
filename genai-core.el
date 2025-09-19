@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-08-28 05:37:47>
+;;; Timestamp: <2025-09-16 18:09:11>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-core.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -10,6 +10,7 @@
 (require 'genai-variables)
 
 ;;;###autoload
+
 (defun genai-on-region ()
   "Run GenAI on region, dired or prompt."
   (interactive)
@@ -17,8 +18,8 @@
   (let* ((marked-files
           (and (eq major-mode 'dired-mode)
                (condition-case nil
-                  (dired-get-marked-files nil nil)
-                  (user-error nil))))
+                   (dired-get-marked-files nil nil)
+                 (user-error nil))))
          (prompt-text
           (cond
            ((< 1 (length marked-files))
@@ -36,24 +37,25 @@
      ((equal prompt-text "g")
       (genai-interactive-mode -1)
       (switch-to-buffer-other-window genai-buffer-name)
-      (keyboard-quit) 
+      (keyboard-quit)
       (message "Jumped to *GenAI*"))
      ((equal prompt-text "h")
       (genai-interactive-mode -1)
-      (genai-show-history) 
+      (genai-show-history)
       (keyboard-quit)
       (message "Showing history"))
      ((and prompt-text
-           (setq template-type (genai--select-template)))
+           (setq template-type (genai--select-template))
+           (setq n-history (genai--read-n-history)))
       (genai-interactive-mode -1)
+      (display-buffer
+       (get-buffer-create genai-buffer-name))
       (genai--ensure-dependencies)
-      (genai--run-with-template prompt-text template-type)))))
-
+      (genai--run-with-template prompt-text template-type n-history)))))
 
 (defun genai--run (prompt)
   "Dispatch PROMPT to process or history commands."
-  ;; (genai--history-reset-if-large)
-  (genai--history-cycle-if-large)  
+  (genai--history-cycle-if-large)
   (cond
    ((equal prompt "g")
     (switch-to-buffer-other-window genai-buffer-name)
@@ -78,10 +80,8 @@
         (set-window-point win (point))
         (with-selected-window win (recenter 0))))))
 
-
-(defun genai--run-with-template (prompt template-type)
+(defun genai--run-with-template (prompt template-type n-history)
   "Run GenAI with PROMPT and specified TEMPLATE-TYPE."
-  ;; (genai--history-reset-if-large)
   (genai--history-cycle-if-large)
   (cond
    ((equal prompt "g")
@@ -94,21 +94,31 @@
     (with-current-buffer (get-buffer-create genai-buffer-name)
       (genai-mode)
       (font-lock-ensure)
-      (genai--start-python-process-with-template prompt template-type)))))
+      (genai--start-python-process-with-template
+       prompt
+       template-type
+       n-history)))))
 
-
-(defun genai--start-python-process-with-template (prompt template-type)
+(defun genai--start-python-process-with-template
+    (prompt template-type n-history)
   "Start GenAI with PROMPT and TEMPLATE-TYPE."
   (when (process-live-p genai--process)
     (delete-process genai--process))
-  (let* ((safe-dir (or (and default-directory 
-                            (file-exists-p default-directory)
+  (let* ((safe-dir (or (and default-directory
+                            (file-exists-p
+                             default-directory)
                             default-directory)
                        (expand-file-name "~/")
                        "/"))
-         (cmd (genai--construct-python-command-with-template prompt template-type))
+         (cmd
+          (genai--construct-python-command-with-template
+           prompt
+           template-type
+           n-history))
          (default-directory safe-dir)
-         (proc (start-process-shell-command "genai" genai-buffer-name cmd)))
+         (proc
+          (start-process-shell-command "genai" genai-buffer-name
+                                       cmd)))
     (setq genai--process proc)
     (set-process-filter proc #'genai--process-filter)
     (set-process-sentinel proc #'genai--process-sentinel)
@@ -125,7 +135,6 @@
 ;;     (set-process-filter proc #'genai--process-filter)
 ;;     (set-process-sentinel proc #'genai--process-sentinel)
 ;;     (genai--start-spinner)))
-
 
 ;; (defun genai--start-python-process-with-template
 ;;     (prompt template-type)
@@ -146,7 +155,8 @@
 ;;     (set-process-sentinel proc #'genai--process-sentinel)
 ;;     (genai--start-spinner)))
 
-(defun genai--construct-python-command-with-template (prompt template-type)
+(defun genai--construct-python-command-with-template
+    (prompt template-type n-history)
   "Construct command with PROMPT and TEMPLATE-TYPE."
   (genai--parse-api-keys)
   (let ((tmp-prompt-file
@@ -167,7 +177,7 @@
                  " "
                  (mapconcat
                   (lambda
-                      (api-key)
+                    (api-key)
                     (concat "--api_key "
                             (genai--safe-shell-quote-argument api-key)))
                   genai-api-keys-parsed " ")
@@ -186,17 +196,19 @@
                   genai-history-human-path)
                  " "
                  "--n_history "
-                 (genai--safe-shell-quote-argument genai-n-history)
+                 (genai--safe-shell-quote-argument n-history)
                  " "
                  "--template_type "
                  (genai--safe-shell-quote-argument template-type)
                  " "
                  "--prompt_file "
                  (genai--safe-shell-quote-argument tmp-prompt-file))))
-          (genai--insert-prompt-template-type-and-engine prompt template-type)
-          command)))
+      (genai--insert-prompt-template-type-and-engine prompt
+                                                     template-type)
+      command)))
 
 ;;;###autoload
+
 (defun genai-copy-last ()
   "Copy last LLM output."
   (interactive)
@@ -207,6 +219,7 @@
     (kill-ring-save (region-beginning) (region-end))))
 
 ;;;###autoload
+
 (defun genai-copy-code-blocks ()
   "Copy code blocks from last output."
   (interactive)
@@ -227,6 +240,7 @@
         (message "Copied %d blocks" (length blocks))))))
 
 ;;;###autoload
+
 (defun genai-next-code-block
     ()
   "Navigate to the next code block and select the content"
@@ -258,8 +272,8 @@
           (message "Copied."))))
     (deactivate-mark)))
 ;; )
-
 ;;;###autoload
+
 (defun genai-previous-code-block
     ()
   "Navigate to the previous code block and select the content"

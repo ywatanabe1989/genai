@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-07-30 08:51:54>
+;;; Timestamp: <2025-09-16 18:10:27>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-history.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -11,13 +11,43 @@
 (require 'genai-variables)
 (require 'genai-core)
 
-;;;###autoload
-(defun genai-show-history ()
-  "Open human-readable history."
-  (interactive)
-  (find-file-read-only genai-history-human-readable-path)
-  (genai-mode))
+(defun genai--read-n-history ()
+  "Interactively read n_history value."
+  (let
+      ((input
+        (read-string
+         (format "Number of history entries (default %s): "
+                 genai-n-history))))
+    (if (string-match-p "^[0-9]+$" input)
+        input
+      genai-n-history)))
 
+;;;###autoload
+
+;; (defun genai-show-history ()
+;;   "Open human-readable history."
+;;   (interactive)
+;;   (find-file-read-only genai-history-human-readable-path)
+;;   (genai-mode))
+
+(defun genai-show-history ()
+  "Display human-readable history in a buffer."
+  (interactive)
+  (let ((buffer (get-buffer-create genai-buffer-name-history)))
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (if (file-exists-p genai-history-human-readable-path)
+            (insert-file-contents genai-history-human-readable-path)
+          (insert "No history file found."))
+        (genai-mode)
+        (setq buffer-read-only t)
+        (goto-char (point-max))))
+    (display-buffer buffer
+                    '((display-buffer-reuse-window
+                       display-buffer-pop-up-window)
+                      (window-height . 0.4)
+                      (reusable-frames . visible)))))
 ;;;###autoload
 (defun genai-reset-history ()
   "Backup and reset JSON and human-readable history."
@@ -64,7 +94,8 @@
 
 (defun genai--history-cycle-if-large ()
   "Cycle history files when they exceed size limit, keeping last N entries."
-  (let ((cycle-size 20))  ; Keep last 20 exchanges (40 entries)
+  (let ((cycle-size 20))
+                                        ; Keep last 20 exchanges (40 entries)
     (dolist (entry
              (list
               (cons genai-history-human-path "human")
@@ -74,18 +105,18 @@
                    (> (nth 7 (file-attributes file-path))
                       (* 1 1024 1024)))
           (let* ((history (condition-case nil
-                             (json-read-file file-path)
-                           (error [])))
+                              (json-read-file file-path)
+                            (error [])))
                  (history-list (append history nil))
                  (total-entries (length history-list))
                  (keep-entries (* cycle-size 2))  ; user + assistant pairs
                  (cycled-history (if (> total-entries keep-entries)
-                                    (last history-list keep-entries)
-                                  history-list)))
+                                     (last history-list keep-entries)
+                                   history-list)))
             (with-temp-file file-path
               (insert (json-encode cycled-history)))
-            (message "Cycled %s: kept last %d entries" 
-                     (file-name-nondirectory file-path) 
+            (message "Cycled %s: kept last %d entries"
+                     (file-name-nondirectory file-path)
                      (length cycled-history))))))))
 
 

@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-08-10 07:50:10>
+;;; Timestamp: <2025-09-16 18:48:32>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-llm.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -30,7 +30,7 @@
   "Maximum number of tokens used with the engine."
   :type 'string)
 
-(defcustom genai-n-history "5"
+(defcustom genai-n-history "7"
   "Number of history entries to keep."
   :type 'string)
 
