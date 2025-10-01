@@ -1,7 +1,7 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 14:53:21>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-spinner.el
+;;; Timestamp: <2025-09-30 18:25:29>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-spinner.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 

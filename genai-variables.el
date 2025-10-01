@@ -1,9 +1,10 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 15:57:18>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-variables.el
+;;; Timestamp: <2025-09-30 18:25:30>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-variables.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+
 
 ;;; variables.el --- GenAI customizable variables
 
@@ -82,41 +83,205 @@
 (defconst genai--code-block-end-delimiter "```$"
   "End of code block.")
 
-(defcustom genai-whitelist-extensions
-  '(".el" ".py" ".sh" ".vba" ".ps1" ".src" ".txt" ".md" ".org"
-    ".yml"
-    ".yaml" ".json" ".conf")
-  "Allowed file extensions for dired prompts.")
+;; File filtering configuration - ordered by priority (highest to lowest)
 
-(defcustom genai-whitelist-expressions
-  '("__pycache__")
-  "Additional regexp or lambda to include files.")
+;; Priority 1: File size constraints (checked first for performance)
 
-(defcustom genai-blacklist-extensions
-  '(".gz" ".pyc" ".pyo" ".pyd" ".so" ".dll" ".exe" ".zip" ".tar"
-    ".rar" ".7z" ".iso" ".bin" ".dat" ".db" ".sqlite" ".pdf"
-    ".jpg" ".jpeg" ".png" ".gif" ".mp3" ".mp4" ".avi" ".mov"
-    ;; added formats
-    ".bz2" ".xz" ".ttf" ".otf" ".eot" ".woff" ".woff2"
-    ".class" ".jar" ".o" ".obj" ".lib"
-    ".doc" ".docx" ".ppt" ".pptx" ".xls" ".xlsx"
-    ".apk" ".ipa" ".dmg" ".deb" ".rpm"
-    ".psd" ".xcf")
-  "Disallowed file extensions for dired prompts."
+(defcustom genai-dired-filter-file-size-min 0
+  "Minimum file size in bytes to process."
+  :type 'integer
+  :group 'genai)
+
+(defcustom genai-dired-filter-file-size-max-mb 10
+  "Maximum file size in megabytes to process."
+  :type 'integer
+  :group 'genai)
+
+(defcustom genai-dired-filter-file-size-max
+  (* genai-dired-filter-file-size-max-mb 1000000)
+  "Maximum file size in bytes to process."
+  :type 'integer
+  :group 'genai)
+
+;; Priority 2: Filename patterns (highest priority - overrides all other filters)
+
+(defcustom genai-dired-filter-allowed-filename-patterns
+  '()
+  "Regexp patterns for filenames that are ALWAYS allowed (overrides all other filters)."
   :type '(repeat string)
   :group 'genai)
 
-(defcustom genai-blacklist-expressions
-  '("RUNNING" "FINISHED" "2024Y" "2025Y")
-  "Regexp or lambda to exclude files.")
+;; Priority 3: Extensions filtering (if filename patterns don't match)
+
+(defcustom genai-dired-filter-allowed-extensions
+  '(".el"
+    ".py"
+    ".ipynb"
+    ".sh"
+    ".vba"
+    ".ps1"
+    ".src"
+    ".txt"
+    ".md"
+    ".org"
+    ".yml"
+    ".yaml"
+    ".json"
+    ".conf"
+    ".log"
+    ".js"
+    ".ts"
+    ".css"
+    ".html"
+    ".xml")
+  "File extensions that are allowed for processing."
+  :type '(repeat string)
+  :group 'genai)
+
+(defcustom genai-dired-filter-ignored-extensions
+  '(".gz"
+    ".pyc"
+    ".pyo"
+    ".pyd"
+    ".so"
+    ".dll"
+    ".exe"
+    ".zip"
+    ".tar"
+    ".rar"
+    ".7z"
+    ".iso"
+    ".bin"
+    ".dat"
+    ".db"
+    ".sqlite"
+    ".pdf"
+    ".jpg"
+    ".jpeg"
+    ".png"
+    ".gif"
+    ".mp3"
+    ".mp4"
+    ".avi"
+    ".mov"
+    ".bz2"
+    ".xz"
+    ".ttf"
+    ".otf"
+    ".eot"
+    ".woff"
+    ".woff2"
+    ".class"
+    ".jar"
+    ".o"
+    ".obj"
+    ".lib"
+    ".doc"
+    ".docx"
+    ".ppt"
+    ".pptx"
+    ".xls"
+    ".xlsx"
+    ".apk"
+    ".ipa"
+    ".dmg"
+    ".deb"
+    ".rpm"
+    ".psd"
+    ".xcf"
+    "zotero_translators")
+  "File extensions that are ignored during processing."
+  :type '(repeat string)
+  :group 'genai)
+
+;; Priority 4: Filename ignore patterns
+
+(defcustom genai-dired-filter-ignored-filename-patterns
+  '(
+    "\\.backup$"
+    "\\.bak$"
+    )
+  "Regexp patterns for filenames that should be ignored."
+  :type '(repeat string)
+  :group 'genai)
+
+;; Priority 5: Parent directory patterns
+
+(defcustom genai-dired-filter-ignored-parents-patterns
+  '()
+  "Regexp patterns for parent directories that should be ignored."
+  :type '(repeat string)
+  :group 'genai)
+
+(defcustom genai-dired-filter-allowed-parents-patterns
+  '()
+  "Regexp patterns for parent directories that are allowed."
+  :type '(repeat string)
+  :group 'genai)
+
+;; Priority 6: Child directory patterns
+
+(defcustom genai-dired-filter-ignored-children-patterns
+  '(
+    "/.git/"
+    "/node_modules/"
+    "/__pycache__/"
+    "/.pytest_cache/"
+    "/.mypy_cache/"
+    "/venv/"
+    "/.venv/"
+    "/env/"
+    "/.env/"
+    "/build/"
+    "/dist/"
+    "/target/"
+    "/.sass-cache/"
+    "/coverage/"
+    "/.coverage/"
+    "/logs/"
+    "/tmp/"
+    "/temp/"
+    "/.tmp/"
+    "/RUNNING/"
+    "/FINISHED/"
+    "/FINISHED_SUCCESS/"
+    "/FINISHED_ERROR/"
+    "/2024Y"
+    "/2025Y"
+    "/legacy/"
+    "/.legacy/"
+    "/.old/"
+    "/old/"
+    )
+  "Regexp patterns for child directories that should be ignored."
+  :type '(repeat string)
+  :group 'genai)
+
+(defcustom genai-dired-filter-allowed-children-patterns
+  '()
+  "Regexp patterns for child directories that are allowed."
+  :type '(repeat string)
+  :group 'genai)
+
+;; UI configuration
+
+(defcustom genai-dired-buffer-name "*GenAI Files*"
+  "Name of the buffer used for file selection."
+  :type 'string
+  :group 'genai)
 
 (defcustom genai-buffer-name
   "*GenAI*"
-  "Main buffer name for genai package")
+  "Main buffer name for genai package"
+  :type 'string
+  :group 'genai)
 
 (defcustom genai-buffer-name-history
   "*GenAI History*"
-  "History buffer name for genai package")
+  "History buffer name for genai package"
+  :type 'string
+  :group 'genai)
+
 
 (provide 'genai-variables)
 

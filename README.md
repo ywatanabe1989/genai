@@ -1,7 +1,7 @@
 <!-- ---
-!-- Timestamp: 2025-04-27 16:00:46
+!-- Timestamp: 2025-09-30 18:25:33
 !-- Author: ywatanabe
-!-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/README.md
+!-- File: /home/ywatanabe/.emacs.d/lisp/genai/README.md
 !-- --- -->
 
 <!-- ---
@@ -34,7 +34,7 @@ git clone git@github.com:ywatanabe1989/emacs-genai.git $EMACS_GENAI_DIR
 
 ## Dependencies
 ```bash
-pip install "mngs==1.9.8"
+pip install "scitex==1.9.8"
 ```
 
 ## Functions

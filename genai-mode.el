@@ -1,7 +1,7 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-28 15:39:58>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-mode.el
+;;; Timestamp: <2025-09-30 18:25:26>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-mode.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 

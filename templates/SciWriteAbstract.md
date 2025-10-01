@@ -1,4 +1,10 @@
 <!-- ---
+!-- Timestamp: 2025-09-22 05:58:40
+!-- Author: ywatanabe
+!-- File: /home/ywatanabe/.emacs.d/lisp/genai/templates/SciWriteAbstract.md
+!-- --- -->
+
+<!-- ---
 !-- title: ./genai/templates/SciWriteAbstract.md
 !-- author: ywatanabe
 !-- date: 2024-11-19 22:07:20
@@ -85,3 +91,5 @@ PLACEHOLDER
 -----------------
 MY DRAFT ENDS
 -----------------
+
+<!-- EOF -->

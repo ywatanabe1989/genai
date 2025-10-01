@@ -128,9 +128,9 @@ In test codes:
 
 - Do not skip any lines as much as possible. I am really suprized by your speed and accuracy of coding and appreciate your support and patience.
 
-- My code may include my own Python utility package, mngs. Keep its syntax unchanged.
+- My code may include my own Python utility package, scitex. Keep its syntax unchanged.
 
-- When possible, independently implement reusable functions or classes as I will incorporate them into my mngs toolbox.
+- When possible, independently implement reusable functions or classes as I will incorporate them into my scitex toolbox.
 
 - Do not forget explicitly define variable types in functions and classes.
   - Use these types and more:
@@ -157,7 +157,7 @@ In test codes:
   ``` python
   results = {
        "p_value": pval,
-       "stars": mngs.stats.p2stars(pval),
+       "stars": scitex.stats.p2stars(pval),
        "n1": n1,
        "n2": n2,
        "dof": dof,
@@ -169,9 +169,9 @@ In test codes:
   ```
   - So, if you want to use scipy.stats package, do not forget to calculate necessary values listed above.
 
-- P-values should be output with stars using mngs.stats.p2stars:
+- P-values should be output with stars using scitex.stats.p2stars:
   ``` python
-  # mngs.stats.p2stars
+  # scitex.stats.p2stars
   def p2stars(input_data: Union[float, str, pd.DataFrame], ns: bool = False) -> Union[str, pd.DataFrame]:
       """
       Convert p-value(s) to significance stars.
@@ -213,22 +213,22 @@ In test codes:
           raise ValueError("Input must be a float, string, or a pandas DataFrame")
   ```
 
-- For multiple comparisons, please use the FDR correction with `mngs.stats.fdr_correction`:
-  - # mngs.stats.fdr_correctiondef
+- For multiple comparisons, please use the FDR correction with `scitex.stats.fdr_correction`:
+  - # scitex.stats.fdr_correctiondef
   ``` python
   fdr_correction(results: pd.DataFrame) -> pd.DataFrame:
       if "p_value" not in results.columns:
           return results
       _, fdr_corrected_pvals = fdrcorrection(results["p_value"])
       results["p_value_fdr"] = fdr_corrected_pvals
-      results["stars_fdr"] = results["fdr_p_value"].apply(mngs.stats.p2stars)
+      results["stars_fdr"] = results["fdr_p_value"].apply(scitex.stats.p2stars)
       return results
   ```
 
 - Statistical values should be rounded by factor 3 and converted in the .3f format (like 0.001) in float.
-  - In this purpose, you can utilize `mngs.pd.round` function:
+  - In this purpose, you can utilize `scitex.pd.round` function:
   ``` python
-  # mngs.pd.round
+  # scitex.pd.round
   def round(df: pd.DataFrame, factor: int = 3) -> pd.DataFrame:
       def custom_round(column):
           try:

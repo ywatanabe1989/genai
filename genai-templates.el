@@ -1,12 +1,10 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-04-27 14:19:49>
-;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-templates.el
+;;; Timestamp: <2025-09-30 18:25:30>
+;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-templates.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
 
-
-;;; templates.el --- Prompt template system
 
 (require 'genai-variables)
 
@@ -134,10 +132,6 @@ Example: (--genai-find-first-capital \"parapHrase.md\") => (h . 5)"
                  (string-blank-p input)
                  "None"
                input))))
-        (unless
-            (string= input "r")
-          (display-buffer
-           (get-buffer-create genai-buffer-name)))
         template-type))))
 
 
