@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-09-16 18:10:27>
+;;; Timestamp: <2025-09-30 18:25:25>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-history.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -11,19 +11,68 @@
 (require 'genai-variables)
 (require 'genai-core)
 
+(defvar genai-n-history-dynamic 5
+  "Dynamic n-history value that increments with each call.")
+
+(defun genai--dynamic-n-history ()
+  "Calculate dynamic n-history based on conversation turns.
+Starts with default, increases by 1 for each exchange."
+  (let ((max-history 20))
+    (number-to-string (min genai-n-history-dynamic max-history))))
+
+;; (defun genai--read-n-history ()
+;;   "Interactively read n_history value with auto-increment support.
+;; When user provides manual input, reset the dynamic counter."
+;;   (let* ((dynamic-default (genai--dynamic-n-history))
+;;          (input
+;;           (read-string
+;;            (format
+;;             "Number of history entries (default %s): "
+;;             dynamic-default))))
+;;     ;; Increment for next call
+;;     (setq genai-n-history-dynamic (1+ genai-n-history-dynamic))
+;;     (cond
+;;      ;; User provided manual input - use it and reset dynamic for next time
+;;      ((and (not (string-empty-p input))
+;;            (string-match-p "^[0-9]+$" input))
+;;       (setq genai-n-history-dynamic (1+ (string-to-number input)))
+;;       input)
+;;      ;; User pressed enter - use dynamic default
+;;      (t
+;;       dynamic-default))))
+
 (defun genai--read-n-history ()
-  "Interactively read n_history value."
-  (let
-      ((input
-        (read-string
-         (format "Number of history entries (default %s): "
-                 genai-n-history))))
-    (if (string-match-p "^[0-9]+$" input)
-        input
-      genai-n-history)))
+  "Interactively read n_history value with auto-increment support."
+  (message "DEBUG: Starting genai--read-n-history")
+  (message "DEBUG: Current major-mode: %s" major-mode)
+  (message "DEBUG: Current buffer: %s" (current-buffer))
+  (let* ((dynamic-default (genai--dynamic-n-history))
+         (input
+          (condition-case err
+              (read-string
+               (format
+                "Number of history entries (default %s): "
+                dynamic-default))
+            (error
+             (message "ERROR in read-string: %s" err)
+             (signal (car err) (cdr err))))))
+    ;; Increment for next call
+    (setq genai-n-history-dynamic (1+ genai-n-history-dynamic))
+    (cond
+     ((and (not (string-empty-p input))
+           (string-match-p "^[0-9]+$" input))
+      (setq genai-n-history-dynamic (1+ (string-to-number input)))
+      input)
+     (t
+      dynamic-default))))
+
+(defun genai-reset-conversation-context ()
+  "Reset conversation history counter."
+  (interactive)
+  (setq genai-n-history-dynamic 5)  ; Reset to initial value
+  (message "Conversation context reset"))
 
 ;;;###autoload
-
 ;; (defun genai-show-history ()
 ;;   "Open human-readable history."
 ;;   (interactive)

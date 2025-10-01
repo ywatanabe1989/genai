@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-09-16 18:09:11>
+;;; Timestamp: <2025-09-30 18:25:23>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-core.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -10,6 +10,64 @@
 (require 'genai-variables)
 
 ;;;###autoload
+
+;; (defun genai-on-region ()
+;;   "Run GenAI on region, dired or prompt."
+;;   (interactive)
+;;   (genai-interactive-mode 1)
+;;   (let* ((marked-files
+;;           (and (eq major-mode 'dired-mode)
+;;                (condition-case nil
+;;                    (dired-get-marked-files nil nil)
+;;                  (user-error nil))))
+;;          (prompt-text
+;;           (cond
+;;            ((< 1 (length marked-files))
+;;             (genai-interactive-mode -1)
+;;             (genai-dired-copy-contents)
+;;             nil)
+;;            ((use-region-p)
+;;             (prog1
+;;                 (buffer-substring-no-properties
+;;                  (region-beginning) (region-end))
+;;               (deactivate-mark)))
+;;            (t
+;;             (read-string "Enter prompt: " "")))))
+;;     (cond
+;;      ((equal prompt-text "g")
+;;       (genai-interactive-mode -1)
+;;       (switch-to-buffer-other-window genai-buffer-name)
+;;       (keyboard-quit)
+;;       (message "Jumped to *GenAI*"))
+;;      ((equal prompt-text "h")
+;;       (genai-interactive-mode -1)
+;;       (genai-show-history)
+;;       (keyboard-quit)
+;;       (message "Showing history"))
+;;      ((and prompt-text
+;;            (setq template-type (genai--select-template))
+;;            (setq n-history (genai--read-n-history)))
+;;       (genai-interactive-mode -1)
+;;       (display-buffer
+;;        (get-buffer-create genai-buffer-name))
+;;       (genai--ensure-dependencies)
+;;       (genai--run-with-template prompt-text template-type n-history)))))
+
+;; (defun genai--run (prompt)
+;;   "Dispatch PROMPT to process or history commands."
+;;   (genai--history-cycle-if-large)
+;;   (cond
+;;    ((equal prompt "g")
+;;     (switch-to-buffer-other-window genai-buffer-name)
+;;     (keyboard-quit) (message "Jumped to *GenAI*"))
+;;    ((equal prompt "h")
+;;     (genai-show-history) (keyboard-quit)
+;;     (message "Showing history"))
+;;    (t
+;;     (with-current-buffer (get-buffer-create genai-buffer-name)
+;;       (genai-mode)
+;;       (font-lock-ensure)
+;;       (genai--start-python-process prompt)))))
 
 (defun genai-on-region ()
   "Run GenAI on region, dired or prompt."
@@ -36,6 +94,8 @@
     (cond
      ((equal prompt-text "g")
       (genai-interactive-mode -1)
+      (display-buffer
+       (get-buffer-create genai-buffer-name))
       (switch-to-buffer-other-window genai-buffer-name)
       (keyboard-quit)
       (message "Jumped to *GenAI*"))
@@ -45,29 +105,14 @@
       (keyboard-quit)
       (message "Showing history"))
      ((and prompt-text
-           (setq template-type (genai--select-template))
-           (setq n-history (genai--read-n-history)))
-      (genai-interactive-mode -1)
-      (display-buffer
-       (get-buffer-create genai-buffer-name))
-      (genai--ensure-dependencies)
-      (genai--run-with-template prompt-text template-type n-history)))))
-
-(defun genai--run (prompt)
-  "Dispatch PROMPT to process or history commands."
-  (genai--history-cycle-if-large)
-  (cond
-   ((equal prompt "g")
-    (switch-to-buffer-other-window genai-buffer-name)
-    (keyboard-quit) (message "Jumped to *GenAI*"))
-   ((equal prompt "h")
-    (genai-show-history) (keyboard-quit)
-    (message "Showing history"))
-   (t
-    (with-current-buffer (get-buffer-create genai-buffer-name)
-      (genai-mode)
-      (font-lock-ensure)
-      (genai--start-python-process prompt)))))
+           (setq template-type (genai--select-template)))
+      ;; Fix: Read n-history before calling genai--run-with-template
+      (let ((n-history (genai--read-n-history)))
+        (genai-interactive-mode -1)
+        (display-buffer
+         (get-buffer-create genai-buffer-name))
+        (genai--ensure-dependencies)
+        (genai--run-with-template prompt-text template-type n-history))))))
 
 (defun genai--scroll ()
   "Scroll *GenAI* to most recent splitter."

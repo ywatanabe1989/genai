@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-09-15 13:18:49>
+;;; Timestamp: <2025-09-30 18:25:30>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-variables.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)

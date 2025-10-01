@@ -1,41 +1,36 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-10-02 00:12:02 (ywatanabe)"
-# File: /home/ywatanabe/.emacs.d/lisp/genai/genai_claude.py
+# Timestamp: "2025-10-02 01:27:10 (ywatanabe)"
+# File: /home/ywatanabe/.emacs.d/lisp/genai/genai_claude_code_streaming.py
 # ----------------------------------------
 from __future__ import annotations
 import os
 __FILE__ = (
-    "./genai_claude.py"
+    "./genai_claude_code_streaming.py"
 )
 __DIR__ = os.path.dirname(__FILE__)
 # ----------------------------------------
 
+import json
 import subprocess
+import sys
 import tempfile
 
-"""Provides an interface for interacting with GenAI APIs using genai_claude.sh.
-
-This script handles:
-- Loading and formatting chat histories
-- Loading prompt templates
-- Making API calls via genai_claude.sh
-- Updating and saving conversation histories
-
-Key features:
-- Uses genai_claude.sh for API calls
-- Templated prompts system
-- Conversation history management
-- Command line interface
+"""
+Claude Code streaming with history management
+Combines streaming capabilities with conversation history tracking
 """
 
-import argparse
+import shlex
 import warnings
+from logging import getLogger
 
 from scitex.io import glob as scitex_io_glob
 from scitex.io import load as scitex_io_load
 from scitex.io import save as scitex_io_save
 from scitex.path import split as scitex_path_split
+
+logger = getLogger(__name__)
 
 ## Parameters
 TEMPLATE_DIR = scitex_path_split(__file__)[0] + "./templates/"
@@ -76,10 +71,9 @@ def run_genai(
     ai_prompt = GENERAL_INSTRUCTION + _prompt_embedded
 
     # Call genai_claude.sh
-    llm_out = _call_genai_claude(
-        ai_prompt, conversation_context, max_tokens, temperature
+    exit_code, llm_out = _call_claude_code_streaming(
+        ai_prompt, engine, conversation_context, max_tokens, temperature
     )
-    print(llm_out)
 
     # Update chat histories
     _save_updated_human_history(
@@ -134,32 +128,83 @@ def _prepare_conversation_context(ai_history, n_history):
     return recent_history
 
 
-def _call_genai_claude(prompt, conversation_context, max_tokens, temperature):
-    """Call genai_claude.sh with conversation history formatted in prompt."""
+# ------------------------------
+# Streaming Function
+# ------------------------------
+def _call_claude_code_streaming(
+    prompt, model, conversation_context, max_tokens, temperature
+):
+    """Call claude CLI with conversation history and streaming output."""
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".txt", delete=False
     ) as temp_file:
-        # Format conversation history as part of the prompt
         for entry in conversation_context:
             role = "Human" if entry["role"] == "user" else "Assistant"
             temp_file.write(f"{role}: {entry['content']}\n\n")
-
-        # Add current prompt
         temp_file.write(f"Human: {prompt}\n")
         prompt_file = temp_file.name
 
+    final_prompt = (
+        f"("
+        f"Read the prompt written in {prompt_file} and "
+        f"purely respond to the contents of the file, "
+        f"ignoreing this prompt itself"
+        f")"
+    )
+
+    cmd = [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--print",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--model",
+        model,
+        final_prompt,
+    ]
+
     try:
-        # Use -i flag to specify input file
-        cmd = ["genai_claude.sh", "-i", prompt_file]
-
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            # bufsize=1, # working but in chunk
+            bufsize=0,
+            universal_newlines=True,
         )
-        return result.stdout.strip()
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e.stderr}")
-        return ""
+        full_output = []
+
+        for line in iter(process.stdout.readline, ""):
+            if line:
+                line = line.rstrip()
+                if '"type":"assistant"' in line and '"type":"text"' in line:
+                    try:
+                        data = json.loads(line)
+                        if data.get("type") == "assistant":
+                            message = data.get("message", {})
+                            content = message.get("content", [])
+                            for item in content:
+                                if item.get("type") == "text":
+                                    text = item.get("text", "")
+                                    sys.stdout.write(text)
+                                    sys.stdout.flush()
+                                    full_output.append(text)
+                    except json.JSONDecodeError:
+                        print(line)
+                        full_output.append(line)
+
+        exit_code = process.wait()
+        stderr_output = process.stderr.read()
+        if stderr_output:
+            logger.error(f"Stderr: {stderr_output}")
+
+        return exit_code, "".join(full_output)
+
+    except Exception as e:
+        return 1, str(e)
     finally:
         if os.path.exists(prompt_file):
             os.unlink(prompt_file)
@@ -243,6 +288,8 @@ def _save_human_readable_history(
 
 
 if __name__ == "__main__":
+    import argparse
+
     parser = argparse.ArgumentParser(description="")
 
     # Prompt
@@ -277,7 +324,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--engine",
         type=str,
-        default="gemini-2.0-flash-exp",
+        default="sonnet",
         help="(default: %(default)s)",
     )
 
@@ -324,21 +371,5 @@ if __name__ == "__main__":
         prompt=args.prompt,
         prompt_file=args.prompt_file,
     )
-
-"""
-python /home/ywatanabe/.emacs.d/lisp/genai/genai_claude.py --prompt hi
-"""
-
-
-# Issue: genai.el does not handle permissions or file path relaying failed
-
-# | CLAUDE-SONNET-4-20250514
-
-# Running /home/ywatanabe/.bin/llm/genai_claude.sh...
-#     Full prompt file: /tmp/claude_1759043585_1055192/prompt.txt
-# I cannot access the file referenced in the prompt.txt file. The path `/tmp/tmp3e1cnecg.txt` requires permission that hasn't been granted. Could you either:
-
-# 1. Grant permission to read that file, or
-# 2. Provide the actual prompt content directly?
 
 # EOF

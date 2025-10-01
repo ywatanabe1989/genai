@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-06-24 19:29:42 (ywatanabe)"
-# File: /home/ywatanabe/.emacs.d/lisp/genai/genai_mngs.py
+# Timestamp: "2025-09-30 18:25:29 (ywatanabe)"
+# File: /home/ywatanabe/.emacs.d/lisp/genai/genai_scitex.py
 # ----------------------------------------
+from __future__ import annotations
 import os
 __FILE__ = (
-    "./genai_mngs.py"
+    "./genai_scitex.py"
 )
 __DIR__ = os.path.dirname(__FILE__)
 # ----------------------------------------

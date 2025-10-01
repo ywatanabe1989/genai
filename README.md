@@ -1,7 +1,7 @@
 <!-- ---
-!-- Timestamp: 2025-04-27 16:00:46
+!-- Timestamp: 2025-09-30 18:25:33
 !-- Author: ywatanabe
-!-- File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/README.md
+!-- File: /home/ywatanabe/.emacs.d/lisp/genai/README.md
 !-- --- -->
 
 <!-- ---
