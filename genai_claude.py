@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-10-02 00:12:02 (ywatanabe)"
+# Timestamp: "2025-10-02 02:26:41 (ywatanabe)"
 # File: /home/ywatanabe/.emacs.d/lisp/genai/genai_claude.py
 # ----------------------------------------
 from __future__ import annotations

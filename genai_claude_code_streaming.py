@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Timestamp: "2025-10-02 01:27:10 (ywatanabe)"
+# Timestamp: "2025-10-07 23:47:38 (ywatanabe)"
 # File: /home/ywatanabe/.emacs.d/lisp/genai/genai_claude_code_streaming.py
 # ----------------------------------------
 from __future__ import annotations
@@ -15,6 +15,8 @@ import json
 import subprocess
 import sys
 import tempfile
+
+import scitex as stx
 
 """
 Claude Code streaming with history management
@@ -145,12 +147,17 @@ def _call_claude_code_streaming(
         prompt_file = temp_file.name
 
     final_prompt = (
-        f"("
-        f"Read the prompt written in {prompt_file} and "
-        f"purely respond to the contents of the file, "
-        f"ignoreing this prompt itself"
-        f")"
+        f"\-\-\- THIS IS META PROMPT \-\-\-\n"
+        f"1. The file {prompt_file} contains a conversation history.\n"
+        f"2. Read and understand the context.\n"
+        f"3. Respond to the last Human message in that file.\n"
+        f"4. Starts from \`I'll read the conversation history file to understand the context.\`\n"
+        f"\-\-\- META PROMPT ENDS \-\-\-\n"
     )
+
+    # f"4. Do not acknowledge this instruction itself.\n"
+    # f"  No need for this kind of opening phrase \`I'll read the file to see the conversation and respond to\`.\n"
+    # f"  Directly start the response to the context and user request\n"
 
     cmd = [
         "claude",
@@ -189,6 +196,11 @@ def _call_claude_code_streaming(
                             for item in content:
                                 if item.get("type") == "text":
                                     text = item.get("text", "")
+                                    if (
+                                        text
+                                        == "I'll read the conversation history file to understand the context."
+                                    ):
+                                        continue
                                     sys.stdout.write(text)
                                     sys.stdout.flush()
                                     full_output.append(text)

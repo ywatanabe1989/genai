@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-09-30 18:25:25>
+;;; Timestamp: <2025-10-07 23:28:09>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-history.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -43,20 +43,17 @@ Starts with default, increases by 1 for each exchange."
 
 (defun genai--read-n-history ()
   "Interactively read n_history value with auto-increment support."
-  (message "DEBUG: Starting genai--read-n-history")
-  (message "DEBUG: Current major-mode: %s" major-mode)
-  (message "DEBUG: Current buffer: %s" (current-buffer))
   (let* ((dynamic-default (genai--dynamic-n-history))
          (input
-          (condition-case err
-              (read-string
-               (format
-                "Number of history entries (default %s): "
-                dynamic-default))
-            (error
-             (message "ERROR in read-string: %s" err)
-             (signal (car err) (cdr err))))))
-    ;; Increment for next call
+          (with-temp-buffer
+            (condition-case err
+                (read-string
+                 (format
+                  "Number of history entries (default %s): "
+                  dynamic-default))
+              (error
+               (message "ERROR in read-string: %s" err)
+               (signal (car err) (cdr err)))))))
     (setq genai-n-history-dynamic (1+ genai-n-history-dynamic))
     (cond
      ((and (not (string-empty-p input))
@@ -126,6 +123,7 @@ Starts with default, increases by 1 for each exchange."
       (insert ""))
     (with-temp-file genai-history-ai-path
       (insert "[]"))
+    (setq genai-n-history-dynamic 0)
     (message "History reset; backups in %s" backup-dir)))
 
 ;; (defun genai--history-reset-if-large ()

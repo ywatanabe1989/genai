@@ -1,6 +1,6 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-09-30 18:25:23>
+;;; Timestamp: <2025-10-07 23:21:38>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-core.el
 
 ;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
@@ -106,11 +106,11 @@
       (message "Showing history"))
      ((and prompt-text
            (setq template-type (genai--select-template)))
-      ;; Fix: Read n-history before calling genai--run-with-template
       (let ((n-history (genai--read-n-history)))
         (genai-interactive-mode -1)
         (display-buffer
          (get-buffer-create genai-buffer-name))
+        (switch-to-buffer-other-window genai-buffer-name)
         (genai--ensure-dependencies)
         (genai--run-with-template prompt-text template-type n-history))))))
 
@@ -144,23 +144,43 @@
        template-type
        n-history)))))
 
+;; (defun genai--start-python-process-with-template
+;;     (prompt template-type n-history)
+;;   "Start GenAI with PROMPT and TEMPLATE-TYPE."
+;;   (when (process-live-p genai--process)
+;;     (delete-process genai--process))
+;;   (let* ((safe-dir (or (and default-directory
+;;                             (file-exists-p
+;;                              default-directory)
+;;                             default-directory)
+;;                        (expand-file-name "~/")
+;;                        "/"))
+;;          (cmd
+;;           (genai--construct-python-command-with-template
+;;            prompt
+;;            template-type
+;;            n-history))
+;;          (default-directory safe-dir)
+;;          (proc
+;;           (start-process-shell-command "genai" genai-buffer-name
+;;                                        cmd)))
+;;     (setq genai--process proc)
+;;     (set-process-filter proc #'genai--process-filter)
+;;     (set-process-sentinel proc #'genai--process-sentinel)
+;;     (genai--start-spinner)))
+
 (defun genai--start-python-process-with-template
     (prompt template-type n-history)
-  "Start GenAI with PROMPT and TEMPLATE-TYPE."
+  "Start GenAI with PROMPT and TEMPLATE-TYPE in isolated temp directory."
   (when (process-live-p genai--process)
     (delete-process genai--process))
-  (let* ((safe-dir (or (and default-directory
-                            (file-exists-p
-                             default-directory)
-                            default-directory)
-                       (expand-file-name "~/")
-                       "/"))
+  (let* ((temp-dir (make-temp-file "genai-workspace-" t))
          (cmd
           (genai--construct-python-command-with-template
            prompt
            template-type
            n-history))
-         (default-directory safe-dir)
+         (default-directory temp-dir)
          (proc
           (start-process-shell-command "genai" genai-buffer-name
                                        cmd)))
