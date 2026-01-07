@@ -3,7 +3,7 @@
 ;;; Timestamp: <2025-09-30 18:25:29>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-spinner.el
 
-;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@scitex.ai)
 
 
 (defvar genai--spinner-frames

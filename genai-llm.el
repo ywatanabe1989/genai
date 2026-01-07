@@ -1,9 +1,9 @@
 ;;; -*- coding: utf-8; lexical-binding: t -*-
 ;;; Author: ywatanabe
-;;; Timestamp: <2025-09-30 18:25:25>
-;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-llm.el
+;;; Timestamp: <2025-11-23 22:49:41>
+;;; File: /home/ywatanabe/.dotfiles/.emacs.d/lisp/genai/genai-llm.el
 
-;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@scitex.ai)
 
 
 (defvar genai-llm-provider ""
@@ -67,6 +67,7 @@
             ;; "claude-sonnet-4-20250514"
             ;; "claude-3-7-sonnet-20250219"
             ;; "claude-3-5-sonnet-20241022"
+            "claude-haiku-4-5-20251001"
             "claude-3-5-haiku-20241022"))
          ((string= provider "google")
           '("gemini-2.5-pro"

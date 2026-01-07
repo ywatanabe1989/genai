@@ -3,7 +3,7 @@
 ;;; Timestamp: <2025-10-07 23:28:09>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-history.el
 
-;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@scitex.ai)
 
 
 ;;; history.el --- GenAI history commands
