@@ -257,7 +257,7 @@ In test codes:
   ``` bash
   #!/bin/bash
   # script-name.sh
-  # Author: ywatanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+  # Author: ywatanabe (ywatanabe@scitex.ai)
   # Date: $(date +"%Y-%m-%d-%H-%M")
 
   LOG_FILE=".$0.log"

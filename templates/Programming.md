@@ -1,5 +1,5 @@
 <!-- ---
-!-- Timestamp: 2025-09-20 13:40:26
+!-- Timestamp: 2025-11-03 09:30:25
 !-- Author: ywatanabe
 !-- File: /home/ywatanabe/.emacs.d/lisp/genai/templates/Programming.md
 !-- --- -->
@@ -374,12 +374,31 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
 - The template of shell script is as follows:
   ``` bash
   #!/bin/bash
-  # script-name.sh
-  # Author: ywatanabe (ywatanabe@alumni.u-tokyo.ac.jp)
-  # Date: $(date +"%Y-%m-%d-%H-%M")
+  # -*- coding: utf-8 -*-
+  # Timestamp: "2025-11-03 09:30:05 (ywatanabe)"
+  # File: ./scripts/maintenance/tmp.sh
 
-  LOG_FILE=".$0.log" # Do not remove existing extension (e.g., script.sh.log is preferred)
+  ORIG_DIR="$(pwd)"
+  THIS_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
+  LOG_PATH="$THIS_DIR/.$(basename $0).log"
+  echo > "$LOG_PATH"
 
+  GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+
+  GRAY='\033[0;90m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[0;33m'
+  RED='\033[0;31m'
+  NC='\033[0m' # No Color
+
+  echo_info() { echo -e "${GRAY}INFO: $1${NC}"; }
+  echo_success() { echo -e "${GREEN}SUCC: $1${NC}"; }
+  echo_warning() { echo -e "${YELLOW}WARN: $1${NC}"; }
+  echo_error() { echo -e "${RED}ERRO: $1${NC}"; }
+  echo_header() { echo_info "=== $1 ==="; }
+  # ---------------------------------------
+
+  # MUST INCLUDE USAGE EVEN WHEN NO ARGUMENTS AVAILABLE OTHER THAN help
   usage() {
       echo "Usage: $0 [-s|--subject <subject>] [-m|--message <message>] [-h|--help]"
       echo-
@@ -394,6 +413,7 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
       exit 1
   }
 
+  # ALWAYS ENSURE ARGUMENT PARSER IMPLEMENTED INSTEAD OF DIRECT $1, $2, ...
   my-echo() {
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -423,9 +443,7 @@ You are an experienced programmer. Please implement, revise, debug, or refactor 
       my-echo "$@"
   }
 
-  main "$@" 2>&1 | tee "$LOG_FILE"
-
-  notify -s "$0 finished" -m "$0 finished"
+  main "$@" 2>&1 | tee "$LOG_PATH"
 
   # EOF
   ```

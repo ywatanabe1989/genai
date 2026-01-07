@@ -3,7 +3,7 @@
 ;;; Timestamp: <2025-10-07 23:21:38>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-core.el
 
-;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@scitex.ai)
 
 
 (require 'genai-mode)

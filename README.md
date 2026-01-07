@@ -81,6 +81,6 @@ pip install "scitex==1.9.8"
 Place templates in `$EMACS_GENAI_DIR/templates/*.md`. File name, the first uppercase letter, becomes the shortcut key in default. Use "PLACEHOLDER" to control manual prompt placement. Examples are available under ['./templates'](./templates).
 
 ## Contact
-Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+Yusuke Watanabe (ywatanabe@scitex.ai)
 
 <!-- EOF -->

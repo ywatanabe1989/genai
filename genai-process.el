@@ -3,7 +3,7 @@
 ;;; Timestamp: <2025-09-30 18:25:26>
 ;;; File: /home/ywatanabe/.emacs.d/lisp/genai/genai-process.el
 
-;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@alumni.u-tokyo.ac.jp)
+;;; Copyright (C) 2025 Yusuke Watanabe (ywatanabe@scitex.ai)
 
 
 ;;; process.el --- Process and spinner
